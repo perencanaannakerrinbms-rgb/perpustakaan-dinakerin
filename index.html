@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Informasi Perpustakaan & Arsip - Dinakerin</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (xlsx) via CDN -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- Header Section -->
+    <header class="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <!-- Brand & Title -->
+                <div class="flex items-start sm:items-center gap-3.5">
+                    <div class="p-2.5 bg-emerald-500/20 border border-emerald-400/30 rounded-xl text-emerald-400 shrink-0 mt-1 sm:mt-0">
+                        <i data-lucide="library" class="w-7 h-7"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">Sistem Informasi Perpustakaan & Arsip</h1>
+                        <p class="text-xs sm:text-sm text-slate-300 mt-0.5">Katalog Koleksi & Sirkulasi Dokumen (No. 1 – 455)</p>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <label for="excel-upload" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition cursor-pointer">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        <span>Impor Excel (.xlsx)</span>
+                        <input id="excel-upload" type="file" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelImport(event)">
+                    </label>
+
+                    <button onclick="exportToExcel()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs sm:text-sm font-medium rounded-lg border border-slate-600 transition cursor-pointer">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Ekspor Excel (.xlsx)</span>
+                    </button>
+
+                    <button onclick="openAddOrNextSlotModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-medium rounded-lg shadow-sm transition cursor-pointer">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>+ Tambah / Isi Slot</span>
+                    </button>
+
+                    <button onclick="openResetModal()" class="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-200 text-xs sm:text-sm font-medium rounded-lg border border-rose-800/60 transition cursor-pointer" title="Kembalikan ke data asli 1–455">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Reset Data Asli (455)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- KPI Summary Cards (6 Cards) -->
+        <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <!-- Card 1: Total Nomor Urut -->
+            <div onclick="quickFilterCompleteness('all')" class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:border-blue-300 transition cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total Nomor</p>
+                    <div class="p-1.5 bg-slate-100 text-slate-600 rounded-lg">
+                        <i data-lucide="hash" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-total-slots" class="text-2xl font-bold text-slate-800 mt-2">0</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Rentang No. 1 – 455</p>
+            </div>
+
+            <!-- Card 2: Koleksi Terisi -->
+            <div onclick="quickFilterCompleteness('filled')" class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:border-blue-300 transition cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Koleksi Terisi</p>
+                    <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-filled" class="text-2xl font-bold text-blue-600 mt-2">0</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Judul terdata</p>
+            </div>
+
+            <!-- Card 3: Slot Kosong (Clickable Filter) -->
+            <div onclick="quickFilterCompleteness('empty')" class="bg-white rounded-xl p-4 border border-dashed border-slate-300 shadow-sm hover:border-amber-400 hover:bg-amber-50/30 transition cursor-pointer group" title="Klik untuk memfilter hanya Slot Kosong">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500 group-hover:text-amber-700">Slot Kosong</p>
+                    <div class="p-1.5 bg-slate-100 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-700 rounded-lg transition">
+                        <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-empty" class="text-2xl font-bold text-slate-600 group-hover:text-amber-700 mt-2">0</p>
+                <p class="text-[11px] text-blue-600 font-medium mt-0.5 flex items-center gap-1">
+                    <span>Klik filter kosong</span>
+                    <i data-lucide="arrow-right" class="w-3 h-3"></i>
+                </p>
+            </div>
+
+            <!-- Card 4: Akan Diserahkan -->
+            <div onclick="quickFilterStatus('Akan diserahkan')" class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:border-emerald-300 transition cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Akan Diserahkan</p>
+                    <div class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-handover" class="text-2xl font-bold text-emerald-600 mt-2">0</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Siap serah terima</p>
+            </div>
+
+            <!-- Card 5: Tersedia / Di Rak -->
+            <div onclick="quickFilterStatus('Tersedia')" class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:border-indigo-300 transition cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Tersedia / Di Rak</p>
+                    <div class="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                        <i data-lucide="archive" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-available" class="text-2xl font-bold text-indigo-600 mt-2">0</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Aktif di perpustakaan</p>
+            </div>
+
+            <!-- Card 6: Sedang Dipinjam -->
+            <div onclick="quickFilterStatus('Dipinjam')" class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm hover:border-amber-300 transition cursor-pointer">
+                <div class="flex items-center justify-between">
+                    <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Sedang Dipinjam</p>
+                    <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
+                        <i data-lucide="repeat" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <p id="kpi-borrowed" class="text-2xl font-bold text-amber-600 mt-2">0</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Sirkulasi aktif</p>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <div class="border-b border-slate-200 bg-white rounded-t-xl px-4 pt-2 shadow-sm">
+            <nav class="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+                <button id="tab-btn-catalog" onclick="switchTab('catalog')" class="tab-btn border-blue-600 text-blue-600 whitespace-nowrap py-3.5 px-1 border-b-2 font-semibold text-sm flex items-center gap-2 cursor-pointer">
+                    <i data-lucide="list-ordered" class="w-4 h-4"></i>
+                    <span>Katalog Koleksi (1–455)</span>
+                    <span id="badge-catalog-count" class="bg-blue-100 text-blue-700 py-0.5 px-2 rounded-full text-xs font-semibold">0</span>
+                </button>
+
+                <button id="tab-btn-circulation" onclick="switchTab('circulation')" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3.5 px-1 border-b-2 font-medium text-sm flex items-center gap-2 cursor-pointer">
+                    <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+                    <span>Sirkulasi & Peminjaman</span>
+                    <span id="badge-loan-count" class="bg-amber-100 text-amber-800 py-0.5 px-2 rounded-full text-xs font-semibold">0</span>
+                </button>
+
+                <button id="tab-btn-stats" onclick="switchTab('stats')" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 whitespace-nowrap py-3.5 px-1 border-b-2 font-medium text-sm flex items-center gap-2 cursor-pointer">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                    <span>Ringkasan & Statistik</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- TAB 1: KATALOG KOLEKSI (1-455) -->
+        <div id="tab-panel-catalog" class="tab-panel space-y-4">
+            <!-- Built-in Dataset Info Banner -->
+            <div id="sample-data-banner" class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="p-2 bg-emerald-100 text-emerald-700 rounded-lg shrink-0 mt-0.5">
+                        <i data-lucide="database" class="w-5 h-5"></i>
+                    </div>
+                    <div class="text-sm text-emerald-950">
+                        <p class="font-semibold">Seluruh 455 nomor urut asli (No. 1 – 455) telah tertanam otomatis di aplikasi.</p>
+                        <p class="text-emerald-800 mt-0.5">Mencakup <strong class="font-semibold">356 koleksi terisi</strong> dan <strong class="font-semibold">99 slot kosong</strong> sesuai file <code class="bg-emerald-100 px-1.5 py-0.5 rounded font-mono text-xs">katalog buku lama.xlsx</code>. Gunakan <strong class="font-semibold">'Impor Excel (.xlsx)'</strong> hanya jika ingin memperbarui dari file baru.</p>
+                    </div>
+                </div>
+                <button onclick="dismissBanner()" class="text-emerald-600 hover:text-emerald-800 p-1 rounded-lg self-end sm:self-center cursor-pointer" title="Tutup pemberitahuan">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Search & Filters Card -->
+            <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                    <!-- Quick Search -->
+                    <div class="md:col-span-4 relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </div>
+                        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Cari No. Urut, Kode, Judul, Penerbit, Subyek..." class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Filter Kelengkapan Data -->
+                    <div class="md:col-span-3">
+                        <select id="filter-completeness" onchange="applyFilters()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700">
+                            <option value="all">Semua Nomor (1–455)</option>
+                            <option value="filled">Hanya Koleksi Terisi</option>
+                            <option value="empty">Hanya Slot Kosong (Belum Diinput)</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Status -->
+                    <div class="md:col-span-2">
+                        <select id="filter-status" onchange="applyFilters()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Semua Status</option>
+                            <option value="Tersedia">Tersedia</option>
+                            <option value="Akan diserahkan">Akan diserahkan</option>
+                            <option value="Dipinjam">Sedang Dipinjam</option>
+                            <option value="Slot Kosong">Slot Kosong</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Tahun Terbit -->
+                    <div class="md:col-span-1">
+                        <select id="filter-year" onchange="applyFilters()" class="w-full px-2.5 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Tahun</option>
+                        </select>
+                    </div>
+
+                    <!-- Filter Pemproses -->
+                    <div class="md:col-span-2">
+                        <select id="filter-processor" onchange="applyFilters()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Semua Pemproses</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Subyek Filter + Filter Summary & Row Count -->
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div>
+                            Menampilkan <span id="filtered-count" class="font-semibold text-slate-800">0</span> dari <span id="total-count-label" class="font-semibold text-slate-800">0</span> nomor urut
+                        </div>
+                        <select id="filter-subject" onchange="applyFilters()" class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[220px]">
+                            <option value="">Semua Subyek</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="resetFilters()" class="text-blue-600 hover:text-blue-800 font-medium cursor-pointer">Reset Filter</button>
+                        <div class="flex items-center gap-1.5">
+                            <label for="page-size">Baris/hal:</label>
+                            <select id="page-size" onchange="changePageSize()" class="border border-slate-300 rounded px-2 py-1 bg-white text-slate-700 focus:outline-none">
+                                <option value="15">15</option>
+                                <option value="30" selected>30</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="all">Semua (455)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responsive Data Table -->
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div id="catalog-table-wrapper" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                        <thead class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold tracking-wider sticky top-0 z-10 shadow-2xs">
+                            <tr>
+                                <th scope="col" class="px-3 py-3.5 text-center w-14">No</th>
+                                <th scope="col" class="px-3 py-3.5 text-left w-40">Kode & Tahun</th>
+                                <th scope="col" class="px-3 py-3.5 text-left min-w-[280px]">Judul & Penerbit</th>
+                                <th scope="col" class="px-3 py-3.5 text-left w-28">Fisik & Bahasa</th>
+                                <th scope="col" class="px-3 py-3.5 text-left w-36">Subyek</th>
+                                <th scope="col" class="px-3 py-3.5 text-left w-40">Pemproses & Tgl Proses</th>
+                                <th scope="col" class="px-3 py-3.5 text-center w-44">Status</th>
+                                <th scope="col" class="px-3 py-3.5 text-center w-40">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalog-table-body" class="divide-y divide-slate-200 bg-white">
+                            <!-- Rows rendered via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Controls -->
+                <div id="pagination-controls" class="bg-slate-50 px-4 py-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                    <div id="pagination-info">Halaman 1 dari 1</div>
+                    <div id="pagination-buttons" class="flex flex-wrap items-center gap-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SIRKULASI & PEMINJAMAN -->
+        <div id="tab-panel-circulation" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Loan Form -->
+                <div class="lg:col-span-5 bg-white rounded-xl p-5 border border-slate-200 shadow-sm h-fit space-y-4">
+                    <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                        <div class="p-2 bg-amber-100 text-amber-700 rounded-lg">
+                            <i data-lucide="book-up" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800">Catat Peminjaman Baru</h2>
+                            <p class="text-xs text-slate-500">Pilih koleksi terisi yang tersedia untuk dipinjamkan</p>
+                        </div>
+                    </div>
+
+                    <form id="loan-form" onsubmit="handleLoanSubmit(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Filter Cepat Judul / Kode Buku</label>
+                            <input type="text" id="loan-book-search" oninput="populateLoanBookSelect()" placeholder="Ketik nomor, kode, atau judul untuk menyaring pilihan..." class="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                            
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Pilih Buku / Dokumen <span class="text-rose-500">*</span></label>
+                            <select id="loan-book-select" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Pilih Koleksi Tersedia --</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Peminjam <span class="text-rose-500">*</span></label>
+                                <input type="text" id="loan-borrower" required placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Bidang / Unit Kerja <span class="text-rose-500">*</span></label>
+                                <input type="text" id="loan-unit" required placeholder="Contoh: Bidang Pelatihan" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Pinjam <span class="text-rose-500">*</span></label>
+                                <input type="date" id="loan-date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Jatuh Tempo <span class="text-rose-500">*</span></label>
+                                <input type="date" id="loan-due-date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">Keterangan / Keperluan</label>
+                            <textarea id="loan-notes" rows="2" placeholder="Catatan tambahan (opsional)..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-lg shadow-sm transition cursor-pointer flex items-center justify-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            <span>Simpan Transaksi Peminjaman</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Loan History Table / List -->
+                <div class="lg:col-span-7 bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800">Peminjaman Aktif & Riwayat Pengembalian</h2>
+                            <p class="text-xs text-slate-500">Klik tombol "Kembalikan" 1-klik saat koleksi dikembalikan</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select id="loan-filter-status" onchange="renderLoans()" class="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white">
+                                <option value="all">Semua Riwayat</option>
+                                <option value="active">Sedang Dipinjam</option>
+                                <option value="returned">Sudah Dikembalikan</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="loans-list-container" class="space-y-3">
+                        <!-- Loan items rendered via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: RINGKASAN & STATISTIK -->
+        <div id="tab-panel-stats" class="tab-panel hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: Top 10 Tahun Terbit -->
+                <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                    <div class="mb-4">
+                        <h3 class="text-base font-bold text-slate-800">Distribusi Koleksi Terisi per Tahun Terbit (Top 10)</h3>
+                        <p class="text-xs text-slate-500">Jumlah dokumen berdasarkan tahun penerbitan</p>
+                    </div>
+                    <div id="chart-years" class="space-y-3"></div>
+                </div>
+
+                <!-- Right Column Charts -->
+                <div class="space-y-6">
+                    <!-- Chart 2: Kelengkapan Slot (Terisi vs Kosong) -->
+                    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                        <div class="mb-4">
+                            <h3 class="text-base font-bold text-slate-800">Status Kelengkapan Nomor Urut (1–455)</h3>
+                            <p class="text-xs text-slate-500">Perbandingan nomor yang sudah terisi judul vs slot kosong</p>
+                        </div>
+                        <div id="chart-completeness" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Chart 3: Status Penyerahan & Sirkulasi -->
+                    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                        <div class="mb-4">
+                            <h3 class="text-base font-bold text-slate-800">Distribusi Status Koleksi Terisi</h3>
+                            <p class="text-xs text-slate-500">Proporsi status penyerahan dan sirkulasi peminjaman</p>
+                        </div>
+                        <div id="chart-status" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Chart 4: Petugas Pemproses -->
+                    <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                        <div class="mb-4">
+                            <h3 class="text-base font-bold text-slate-800">Rekapitulasi per Petugas Pemproses</h3>
+                            <p class="text-xs text-slate-500">Jumlah dokumen yang telah diproses per petugas</p>
+                        </div>
+                        <div id="chart-processors" class="space-y-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>&copy; 2026 Sistem Informasi Perpustakaan & Arsip Dinakerin (No. 1 – 455). Penyimpanan Otomatis Browser Aktif.</p>
+            <p>Didukung Impor/Ekspor Excel (.xlsx)</p>
+        </div>
+    </footer>
+
+    <!-- MODAL 1: ADD / EDIT / FILL SLOT COLLECTION -->
+    <div id="form-modal" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full overflow-hidden my-8">
+            <div class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="file-edit" class="w-5 h-5 text-emerald-400"></i>
+                    <h3 id="form-modal-title" class="text-base font-bold">Isi Data Slot Koleksi</h3>
+                </div>
+                <button onclick="closeFormModal()" class="text-slate-300 hover:text-white cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="collection-form" onsubmit="handleCollectionSave(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="edit-item-id">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Nomor Urut <span class="text-rose-500">*</span></label>
+                        <input type="number" id="field-no" oninput="suggestCodeOnNoOrYearChange()" required min="1" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-semibold text-slate-700">Kode Klasifikasi <span class="text-rose-500">*</span></label>
+                            <button type="button" onclick="applyAutoFormatCode()" class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">Isi Format NP.100.[No].[Tahun]</button>
+                        </div>
+                        <input type="text" id="field-kode" required placeholder="Contoh: NP.100.225.2026" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Judul Buku / Dokumen <span class="text-rose-500">*</span></label>
+                    <textarea id="field-judul" required rows="2" placeholder="Masukkan judul lengkap buku atau dokumen arsip..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tahun Terbit</label>
+                        <input type="text" id="field-tahun" oninput="suggestCodeOnNoOrYearChange()" placeholder="Contoh: 2026" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Terbit</label>
+                        <input type="text" id="field-tgl-terbit" placeholder="YYYY-MM-DD / YYYY-MM" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Bahasa</label>
+                        <input type="text" id="field-bahasa" value="ind" placeholder="ind / eng" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Penerbit / Pembuat</label>
+                        <input type="text" id="field-penerbit" placeholder="Nama instansi atau penulis" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Deskripsi Fisik</label>
+                        <input type="text" id="field-fisik" placeholder="Contoh: 119 hlm." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Subyek / Kategori</label>
+                        <input type="text" id="field-subyek" placeholder="Contoh: Ketenagakerjaan, RPJMD" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                        <select id="field-status" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Tersedia / Di Rak</option>
+                            <option value="Akan diserahkan">Akan diserahkan</option>
+                            <option value="Dipinjam">Dipinjam</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Pemproses</label>
+                        <input type="text" id="field-pemproses" placeholder="Nama petugas pemproses" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tanggal Proses</label>
+                        <input type="date" id="field-tgl-proses" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
+                    <button type="button" onclick="closeFormModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition cursor-pointer">Simpan ke Katalog</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: DETAIL VIEW -->
+    <div id="detail-modal" class="fixed inset-0 z-40 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl max-w-xl w-full overflow-hidden my-8">
+            <div class="px-6 py-4 bg-gradient-to-r from-slate-800 to-blue-900 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span id="detail-kode-badge" class="px-2.5 py-0.5 bg-blue-500/30 border border-blue-400/40 rounded text-xs font-mono font-semibold">NP.100.1.2021</span>
+                    <h3 class="text-base font-bold">Detail Koleksi</h3>
+                </div>
+                <button onclick="closeDetailModal()" class="text-slate-300 hover:text-white cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="detail-modal-body" class="p-6 space-y-4 text-sm"></div>
+
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <button onclick="closeDetailModal()" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg cursor-pointer">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CONFIRMATION MODAL (Clear Slot / Delete / Reset) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="p-2.5 bg-rose-100 text-rose-600 rounded-xl shrink-0">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 id="confirm-modal-title" class="text-base font-bold text-slate-800">Konfirmasi Tindakan</h3>
+                    <p id="confirm-modal-message" class="text-sm text-slate-600 mt-1">Apakah Anda yakin ingin melanjutkan tindakan ini?</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2 pt-2">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer">Batal</button>
+                <button id="confirm-modal-secondary-btn" class="hidden px-4 py-2 text-sm font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 rounded-lg cursor-pointer">Kosongkan Slot Saja</button>
+                <button id="confirm-modal-action-btn" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg cursor-pointer">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        /**
+         * 1. FULL BUILT-IN DATASET (ALL 356 FILLED ITEMS + 99 EMPTY SLOTS = 455 ROWS)
+         */
+        const RAW_SEED = {"p":["Agus Nur Hadie, S.Sos., M.Si.","Axis Communications","BAPPEDA Provinsi Jawa Tengah","BKPPD Kab. Banyumas","BPKP Provinsi Jawa Tengah","BPS","BPS Kab. Banyumas","BPS RI","Badan Penanaman Modal dan Pelayanan Perizinan","Badan Penyuluhan Pertanian Perikanan Kehutanan dan Ketahanan Pangan","Bagian Administrasi Pembangunan Setda Kab. Banyumas","Bagian Hukum Sekda Kab. Banyumas","Bagian Keuangan Dinnakerkop UKM","Bagian Organisasi Setda Kab. Banyumas","Bagian Pemerintahan dan Kerjasama Sekretariat Daerah Kab. Banyumas","Bagian Tata Pemerintah Sekretariat Daerah Kab. Banyumas","Balai Latihan Kerja Lembang","Bapeluh dan KP Kab. Banyumas","Bappeda Kab. Banyumas","Bappeda Kab. Banyumas dengan FEB Unsoed","Bappedalitbang","Bappedalitbang Kab. Banyumas","Better Banyumas","Bidang Statistik Persandian dan Infrastruktur TIK Dinkominfo Kab. Banyumas","Bupati Banyumas","DINPORAPAR","DINSOSNAKERTRANS","DPPKB3A Kab. Banyumas bekerjasama dengan Koalisi Kependudukan dan Pembangunan Kab. Banyumas","Deputi Bidang Kesetaraan Gender Kementerian PPPA RI","Diklat Kepemimpinan Tk. IV Angkatan XIV BPSDMD Prov. Jateng bekerjasama dengan BKDD Kab. Banyumas","Dinas Ketenagakerjaan dan Perindustrian Kab. Cilacap","Dinas Perhubungan Komunikasi dan Informatika Kab. Banyumas","Dinas Perindustrian Perdagangan dan Koperasi Kab. Banyumas","Dinas Perindustrian Perdagangan dan Koperasi Pemerintah Kab. Banyumas","Dinas Perindustrian dan Perdagangan Kab. Banyumas","Dinas Perumahan dan Kawasan Permukiman Kab. Banyumas","Dinas Tenaga Kerja dan Transmigrasi Provinsi Jawa Tengah","Dindukcapil Kab. Banyumas","Dinkominfo Kab. Banyumas","Dinnakerkop UKM","Dinnakerkop UKM Banyumas","Dinnakerkop UKM Kab. Banyumas","Dinnakerkop UKM Kab. Banyumas Subbag Umum dan Kepegawaian","Dinnakerkop UKM Kab. Banyumas Tahun 2020","Dinsosnakertrans Kab. Banyumas","Direktorat Jenderal Pembinaan Penempatan Tenaga Kerja dan Perluasan Kerja","Direktorat Jenderal Pembinaan Penempatan Tenaga Kerja dan Perluasan Kesempatan Kerja","Disnakertrans","Disnakertrans Prov. Jateng","Disnakertrans Provinsi Jawa Tengah","Ditjen Pembinaan Penempatan Tenaga Kerja dan Perluasan Kesempatan Kerja","Drs. Joko Wiyono, M.Si","Drs. Setyohadi Pramoto, M.Si","FEB UNSOED","Faridah Ihda Wahyuni, S.AP.","Ir. Wahyu Budi Saptono, M.Si.","KEMNAKER","KPRI Sehat RSUD Prof. Dr. Margono Sokaraja","KSU Sumber Makmur","Kantor Pendidikan dan Pelatihan","Kementerian Ketenagakerjaan RI","Kementerian Koperasi dan UKM RI","Kementerian PANRB","Kementerian Pemberdayaan Perempuan dan Perlindungan Anak RI","Kepala Bappedalitbang Kab. Banyumas","Kepala Barenbang Kemnaker","Kepala Dindukcapil Kab. Banyumas","Kepala Disnakertrans","Kepala Pusat Perencanaan Ketenagakerjaan","Kerjasama Pusat Perencanaan Ketenagakerjaan Barenbang Kemnaker RI dengan Disnaker Kota AAAAA","Lasmiyati, SE., M.Si.","Majalah Peluang","Menteri Dalam Negeri RI","Menteri Ketenagakerjaan RI","Menteri PANRB RI","Muhammad Iqbal, SE., SH., M.Si.","Nusa Indah","PT Asus Indo Service Tama","PT Munasa Kreasi Nusantara","Pemda Kab. Banyumas","Pemerintah Kab. Banyumas","Pemerintah Kab. Banyumas Dinnakerkop UKM","Pemerintah Kab. Banyumas Dinsosnakertrans","Pemerintah Provinsi Jawa Tengah","Pemerintah Provinsi Jawa Tengah Disnakertransduk","Pusat Data dan Informasi Ketenagakerjaan","Pusat Data dan Informasi Ketenagakerjaan Barenbang Kemnaker RI","Pusat Data dan Kemnaker","Pusat Perencanaan Ketenagakerjaan Barenbang Kemnaker","Pusat Perencanaan Ketenagakerjaan Barenbang Kemnaker RI","Pusdatik Kemnaker","Pusperket Kemnaker","Retno Astuti Dewi","Sekretariat Daerah Kab. Banyumas","Sekretaris Daerah Kab. Banyumas","Sekretaris Dinas","UNSOED","Yatim Mandiri","Yayasan Carablaka","Yogi Prayitno, SH"],"s":["ASIA","Akuntabilitas","Aplikasi Satu Data","BBPLK","Balai Latihan Kerja","Benturan Kepentingan","Bimtek RPJMD","Budaya","Buku Lagu","Buku Manual","Buku Panduan","Buku Umum","Buletin","Bursa Kerja","Capaian Kinerja","Catatan Harian PNS","Company Profile","DPA","DPPA","Data Ketenagakerjaan","Data dan Informasi","Database","Diklat Perencanaan","E-MONEV","E-Project","Evaluasi AKIP","Evaluasi Data Ketenagakerjaan","Evaluasi Laporan","Evaluasi Pembukuan SKPD","Evaluasi Renstra","Fashion","Fasilitasi Kasus","Gratifikasi","Hak Anak","Himpunan Peraturan","Hukum/Peraturan","IKU","Indeks Gini","Info Datin","Informasi Pasar Kerja","Investasi","Jadwal Kegiatan","Juknis Musrenbang","K3","KLHS","Kajian Lingkungan Hidup","Katalog Produk","Katalog UMKM","Kebijakan Ketenagakerjaan","Kebijakan Pembangunan","Kemiskinan","Kependudukan","Keputusan Bupati","Kerja Sama","Kesejahteraan Kerja","Ketersediaan Data Pelatihan","Koperasi","LAKIP","LKjIP","LPPD","Laporan Akhir","Laporan Keuangan","Laporan Koperasi","Laporan Purna","Laporan Tahunan Koperasi","Literasi Data","Lowongan Kerja","Majalah","Manajemen Usaha","Materi Diklat","Motivasi","Musrenbang","NTP","Nilai Tambah Bruto","OVOP","Organisasi","PKK","PPID","PUG","Panduan","Pariwisata","Pedoman","Pekerja Anak","Pelatihan Kewirausahaan","Pembangunan Berkelanjutan","Pemutakhiran Permendagri","Pendidikan","Pengadaan","Pengangguran","Pengembangan Kelembagaan","Perencanaan Tenaga Kerja","Perjanjian Kinerja","Perkembangan Kependudukan","Petunjuk Pelaksanaan","Petunjuk Teknis","Product Comparison","Produk Asus","Profil","Program Kerja","Proposal Riset","Proyeksi Tenaga Kerja","RAT","RKA","RKL-RPL","RKPD","RPD","RPJMD","RPJPD","RTP","Rakor","Reformasi Birokrasi","Regulasi Satu Data","Reklame","Religi","Rencana Kerja","Rencana Pembangunan","Rencana Tenaga Kerja","Renja","Renstra","Resep","SAKIP","SIPBM","SOP","SPK","Satu Data","Sinergi Ketenagakerjaan","Sinkronisasi Perencanaan","Standar Data","Standar Harga","Statistik","Statistik Antar Kerja","Statistik Sektoral","Survei Covid-19","TOT","TPB","Teknologi Tepat Guna","Tenaga Kerja Perempuan","Transmigrasi","Upah","e-Monev"],"pm":["Anggi","Anggi Intan Jihan","Anggi Tamara","Anggi; Intan; Jihan","Ilkhan Afriansyah","Nadea","Nadea; Milkha","Noni","Soffia Mardani","Tikno","Ufi"],"tp":["2025-01-08","2025-03-18","2025-05-08","2025-08-05","2025-08-26","2025-11-07"],"st":["Akan diserahkan"],"d":[[1,"","Balai Tenaga Kerja","2021","",-1,"","",4,1,2,0],[2,"","Indikator Kerja Kunci (IKK) LPPD Kabupaten Banyumas Tahun 2018","2018","",15,"119 hlm.","",59,-1,-1,-1],[3,"","Profil Perkembangan Kependudukan Kabupaten Banyumas Tahun 2019","2019","",37,"98 hlm.","",92,-1,-1,-1],[4,"","Kumpulan Materi Bimbingan Teknis Penyusunan RPJMD Sesuai Permendagri 86 Tahun 2017","2018","2018-10-29",52,"","",6,2,5,0],[5,"","Rencana Tindak Pengendalian Tahun 2019","2019","2019-04-08",92,"24 hlm.","",108,2,5,0],[6,"","Paparan Implementasi SAKIP Dinnakerkop UKM Kab. Banyumas","2021","",41,"23 hlm.","",120,1,2,0],[7,"","Evaluasi Pelaporan Data Ketenagakerjaan: Hasil Evaluasi Pengimputan Data Pelatihan dan Produktivitas pada Aplikasi Satu Data Ketenagakerjaan di Provinsi Jawa Tengah Tahun 2018","2019","2019-03-25",-1,"3 hlm.","",26,2,5,0],[8,"","Ketersediaan Data Pelatihan pada Aplikasi Satu Data Menurut Jenis Data dan Provinsi/Kabupaten/Kota di Provinsi Jawa Tengah Tahun 2018","2018","",-1,"6 hlm.","",55,-1,-1,-1],[9,"","Pelaksanaan Reformasi Birokrasi Dinnakerkop UKM Kab. Banyumas","2021","2021-09-29",51,"16 hlm.","",110,6,4,0],[10,"","Program Kerja Dinnakerkop UKM Kab. Banyumas Tahun Anggaran 2021","2021","",51,"13 hlm.","",98,1,2,0],[11,"","Pemutakhiran Permendagri 90 Tahun 2019","2020","2020-10-07",-1,"12 hlm.","",85,1,2,0],[12,"","Membangun Sinergi dan Keserasian Pusat dan Daerah dalam Pembangunan Bidang Ketenagakerjaan","2018","2018-07-19",75,"10 hlm.","",125,-1,-1,-1],[13,"","Kajian Lingkungan Hidup Perubahan RPJMD Kab. Banyumas Tahun 2018-2023","2020","2020-11-24",21,"13 hlm.","",45,6,4,0],[14,"","Evaluasi Pembukuan SKPD 2020 Bagian Keuangan Dinnakerkop UKM Kab. Banyumas","2020","2020-02-07",12,"4 hlm.","",28,1,2,0],[15,"","Rencana Kerja dan Program Dinas Perhubungan Kab. Banyumas Tahun Anggaran 2021","2021","2021-01-12",0,"12 hlm.","",114,6,4,0],[16,"","Rancangan Rencana Tenaga Kerja Kab. Cilacap Tahun 2017-2022","2017","2017-12",30,"66 hlm.","",116,-1,-1,-1],[17,"","Data dan Informasi Kab. Banyumas 2021","2021","2021-10",38,"322 hlm.","",20,-1,-1,-1],[18,"","Rencana Tenaga Kerja Kota AAAAA Tahun 2017-2021","2017","",69,"173 hlm.","",116,-1,-1,-1],[19,"","Indikator Kinerja Kunci (IKK) LPPD Kab. Banyumas Tahun 2017","2017","2017",14,"","",59,-1,-1,-1],[20,"","UU RI No. 20 Tahun 2008 tentang UMKM; Perda No. 14 Tahun 2009 tentang Pengelolaan Dana Pinjaman Bergulir Kab. Banyumas; Perbup No. 84 Tahun 2016 tentang Peraturan Pelaksanaan Perda No. 14 Tahun 2009","2016","2016",-1,"","",35,1,2,0],[21,"","Grand Design Pengendalian Kuantitas Penduduk Kab. Banyumas Tahun 2010-2035 (Pemutakhiran Data 2018)","2018","2018-09-01",27,"","",51,2,5,0],[22,"","Call Centre Penyelenggaraan Reklame di Kecamatan Purwokerto Utara","2018","2018",29,"","",112,2,5,0],[23,"","Standar Operasional Prosedur (SOP) Dinnakerkop UKM Kab. Banyumas 2020","2020","2020-01",42,"","",122,1,2,0],[24,"","Jadwal Rencana Kegiatan","2020","2020-01-06",43,"","",41,1,2,0],[25,"","Pengadaan Langsung (Non Tender) - Pembuatan Paket User Pejabat Pengadaan 2020","2020","2020-03",-1,"","",87,3,2,0],[26,"","Permendagri No. 54 Tahun 2010 tentang Pelaksanaan PP No. 8 Tahun 2008 tentang Tahapan Tatacara Penyusunan Pengendalian dan Evaluasi Pelaksanaan Pembangunan Daerah","2010","2010-10-21",-1,"","",35,2,5,0],[27,"","Kajian Lingkungan Hidup Strategis Perubahan RPJMD Kab. Banyumas Tahun 2018-2023","2018","",21,"","",44,-1,-1,0],[28,"","Kajian Lingkungan Hidup Strategis Penyusunan RPJMD Kab. Banyumas Tahun 2018-2023","2018","",-1,"36 hlm.","",44,-1,-1,-1],[29,"","Laporan Tahunan Informasi Pasar Kerja Tahun 2016","2016","2016-12",44,"","",39,0,-1,0],[30,"","Panduan Pelaksanaan Pengarusutamaan Gender (PUG) di Daerah","2016","2016-12-20",63,"67 hlm.","",78,-1,-1,-1],[31,"","Perbup Banyumas No. 44 Tahun 2016 tentang Pedoman Pengendalian Gratifikasi di Lingkungan Pemerintah Kab. Banyumas","2016","2016-10-24",-1,"","",35,-1,-1,0],[32,"","Analisis Hasil Survei Dampak Covid-19 terhadap Pelaku Usaha","2021","",7,"22 hlm. ; 17,6 x 25 cm","",132,6,4,0],[33,"","NSPK, Meta Data, Interoperabilitas, Kode Referensi & Data Induk dalam Penyelenggaraan Statistik Sektoral","2020","",5,"35 hlm.","",131,2,5,0],[34,"","Perpres RI No. 39 Tahun 2019 tentang Satu Data Indonesia","2019","",-1,"","",35,2,5,0],[35,"","Transmigrasi SIPD 2019","2019","",-1,"","",137,-1,-1,-1],[36,"","Perda Kab. Banyumas No. 16 Tahun 2016 tentang Pembentukan dan Susunan Perangkat Daerah Kab. Banyumas dan Perbup Banyumas Tahun 2016 tentang Kedudukan Susunan Organisasi Tugas dan Fungsi serta Tata Kerja Dinnakerkop UKM Kab. Banyumas","2016","",13,"47 hlm.","",35,3,2,0],[37,"","Paparan Implementasi SAKIP Tahun 2021 Dinnakerkop UKM Kab. Banyumas","2021","",51,"21 hlm.","",120,3,2,0],[38,"","Pelaksanaan Reformasi Birokrasi Dinnakerkop UKM Kab. Banyumas","2021","",51,"12 hlm.","",110,6,4,0],[39,"","Isu Pembangunan Berkelanjutan Prioritas & KRP RTRW Berpotensi Dampak LH","2019","",-1,"15 hlm.","",84,2,5,0],[40,"","Gerakan Kembali Bersekolah: Sebuah Upaya Perbaikan Akses Pelayanan Dasar Bidang Pendidikan di Kab. Brebes","2019","",-1,"4 hlm.","",86,2,5,0],[41,"","Sistem Informasi Pembangunan Berbasis Masyarakat (SIPBM): Apa Mengapa dan Bagaimana?","2019","",-1,"17 hlm.","",121,2,5,0],[42,"","Keputusan Bupati Banyumas No. 050/715 Tahun 2019 tentang Tim Pengelola SIPD Kab. Banyumas Tahun 2019","2019","",-1,"","",52,-1,-1,-1],[43,"","Pelaksanaan Reformasi Birokrasi Dinnakerkop UKM Kab. Banyumas","2020","",-1,"12 hlm.","",110,6,4,0],[44,"","Mengenal Konvensi Hak Anak","2020","",-1,"20 hlm.","",33,6,4,0],[45,"","Pendataan Penganggur","2021","",41,"","",88,6,4,0],[46,"","Mengapa Penurunan Kemiskinan Berjalan Lambat?","2019","",-1,"","",50,2,5,0],[47,"","Keputusan Bupati Banyumas No. 470/28 Tahun 2020 tentang Tim Penyusunan Profil Perkembangan Kependudukan Kab. Banyumas","2020","",-1,"","",52,6,4,0],[48,"","Perda Kab. Banyumas No. 2 Tahun 2015 tentang Perlindungan Tenaga Kerja Indonesia Kab. Banyumas","2015","",-1,"26 hlm.","",35,2,5,0],[49,"","Buku Panduan E-MONEV Kab. Banyumas","2019","",38,"26 hlm.","",23,2,5,0],[50,"","Capaian Kinerja LPPD Kab. Banyumas Tahun 2018","2019","",-1,"","",59,2,5,0],[51,"","Pendidikan dan Pelatihan Teknis Capacity Building Perencanaan Pembangunan Kab. Banyumas Tahun 2013","2013","2013-02-21",59,"66 hlm.","",22,-1,-1,-1],[52,"","Perda Kab. Banyumas No. 10 Tahun 2013 tentang RPJMD Kab. Banyumas Tahun 2013-2018","2013","",80,"","",35,2,5,0],[53,"","Rencana Aksi Daerah (RAD) One Village One Product (OVOP) Kab. Banyumas Tahun 2016-2018","2015","2015-12",33,"60 hlm.","",74,2,5,0],[54,"","Nilai Tukar Petani (NTP) Kab. Banyumas Tahun 2015","2016","2016-09-01",2,"30 hlm.","",72,-1,-1,-1],[55,"","Nilai Tambah Bruto Kab. Banyumas Tahun 2015","2016","",-1,"72 hlm.","",73,-1,-1,-1],[56,"","LAKIP DINSOSNAKERTRANS Tahun 2016","2016","2016-12",26,"266 hlm.","",57,6,4,0],[57,"","Laporan Kinerja Instansi Pemerintah (LKjIP) Tahun 2016","2016","2016-12-31",31,"41 hlm.","",58,1,2,-1],[58,"","Perbup Banyumas No. 76 Tahun 2016 tentang Standar Pelayanan Penanganan Korban Kekerasan Berbasis Gender dan Anak di Kab. Banyumas","2016","",-1,"","",35,-1,-1,0],[59,"","Laporan Kinerja Instansi Pemerintah","2017","2017-01",32,"57 hlm.","",58,-1,-1,-1],[60,"","Rapat Anggota Tahunan (RAT) Tutup Tahun Buku 2016","2017","",80,"","",101,-1,-1,-1],[61,"","Kebijakan Pembangunan Pemerintah Provinsi Jawa Tengah 2017-2018","2017","2017-05-15",2,"34 hlm.","",49,-1,-1,-1],[62,"","Proses Pengadaan Langsung Pengadaan Modul Kegiatan Pelatihan Magang Jepang","2017","",80,"","",87,-1,-1,-1],[63,"","Rencana Pengelolaan Lingkungan Hidup dan Rencana Pemantauan Lingkungan Hidup (RKL-RPL) Pengembangan RSU Siaga Medika Banyumas","2017","",-1,"50 hlm.","",103,-1,-1,-1],[64,"","Rapat Anggota Tahunan Tutup Buku Tahun 2016","2017","2017-03-26",57,"","",101,-1,-1,-1],[65,"","Laporan Tahunan Koperasi Serba Usaha (KSU) Sumber Makmur","2017","2017-01",-1,"54 hlm.","",64,-1,-1,-1],[66,"","Petunjuk Pelaksanaan Wirausaha Baru Melalui Tenaga Kerja Mandiri dengan Pola Pendampingan Tahun 2017","2017","2017",46,"95 hlm.","",93,-1,-1,-1],[67,"","Petunjuk Pelaksanaan Kegiatan Padat Karya Infrastruktur Tahun 2017","2017","2017-12-15",46,"66 hlm.","",93,-1,-1,-1],[68,"","Kebijakan Pembangunan Nasional Bidang Ketenagakerjaan TA 2017-2018","2017","2017-05-18",-1,"26 hlm.","",49,-1,-1,-1],[69,"","Sinkronisasi Perencanaan Bidang Ketenagakerjaan Tahun 2018","2017","2017-05-15",36,"","",126,-1,-1,-1],[70,"","Buku Panduan e-Monev Bappenas (Elektronik Monitoring dan Evaluasi)","2018","2018-04-01",45,"60 hlm.","",139,-1,-1,-1],[71,"","Laporan Purna Kegiatan Pelaksanaan Kegiatan Penyelenggaraan Pelatihan Kewirausahaan Pembuatan Klanting Crispy Rengginang Singkong dan Packaging di Desa Gunungwetan Kec. Jatilawang Tahun 2018","2018","2018-11-17",81,"49 hlm.","",63,-1,-1,0],[72,"","Laporan Purna Kegiatan Transmigrasi Kab. Banyumas Tahun 2018","2018","2018-12",81,"","",63,2,5,0],[73,"","Rancangan Awal: Perubahan RPJMD Kab. Banyumas Tahun 2018-2023","2018","",-1,"","",106,2,5,0],[74,"","Fasilitasi Penyelesaian Kasus antar Kerja antar Daerah","2018","2018-12",81,"","",31,-1,-1,-1],[75,"","Pelaksanaan Kegiatan Penyelenggaraan Pelatihan Kewirausahaan Teknik Membatik dengan Pewarna Sintesis di Desa Kedunggede Kec. Banyumas Tahun 2018","2018","2018-12-07",81,"","",83,-1,-1,-1],[76,"","Penyebarluasan Informasi Bursa Kerja Kab. Banyumas 2018 Program Peningkatan Kesempatan Kerja","2018","2018-12",81,"","",13,-1,-1,-1],[77,"","Pengembangan Kelembagaan Produktivitas dan Pelatihan Kewirausahaan Kab. Banyumas 2018 Program Peningkatan Kesempatan Kerja","2018","2018-12",81,"","",89,-1,-1,-1],[78,"","Laporan Purna Kegiatan Kerjasama Pendidikan dan Pelatihan Kab. Banyumas Tahun 2018 Program Peningkatan Kesempatan Kerja","2018","2018-12",81,"","",63,-1,-1,-1],[79,"","Identifikasi Lowongan Kerja Program Peningkatan Kesempatan Kerja","2018","2018-12",81,"68 hlm.","",66,-1,-1,-1],[80,"","Pelaksanaan Kegiatan Penyelenggaraan Pelatihan Kewirausahaan Pengolahan Kopi Sangrai dan Pengemasan di Desa Watuagung Kec. Tambak Tahun 2018","2018","2018-10-31",81,"","",83,-1,-1,0],[81,"","Rencana Pembangunan Jangka Menengah Daerah (RPJMD) Kab. Banyumas Tahun 2018-2023","2019","2019",80,"","",106,2,5,0],[82,"","Indikator Kinerja Kunci (IKK) LPPD Kab. Banyumas Tahun 2018","2018","2018",14,"","",59,-1,-1,-1],[83,"","CV. EMPEROR Company Profile","2019","2019-08-10",99,"","",16,-1,-1,-1],[84,"","CV. TIRTAMAS Company Profile","2019","2019-09-09",54,"","",16,-1,-1,-1],[85,"","Buku Catatan Kegiatan Harian PNS","2018","2018-07",70,"","",15,2,5,0],[86,"","Buku Catatan Kegiatan Harian PNS","2017","2017-09-01",70,"","",15,-1,-1,0],[87,"","Laporan Tahunan 2018 Informasi Pasar Kerja","2018","2018-12",39,"","",39,-1,-1,-1],[88,"","Standar Operasional Prosedur (SOP) Tahun 2015","2015","2015",32,"","",122,2,5,0],[89,"","Laporan Tahunan Informasi Pasar Kerja Tahun 2016","2016","2016-12",82,"10 hlm.","",39,-1,-1,0],[90,"","Laporan Tahunan 2017 Informasi Pasar Kerja","2017","2017-12",81,"19 hlm.","",39,-1,-1,-1],[91,"","Statistik Antar Kerja Bulan Januari 2018","2018","2018-01-31",81,"","",130,-1,-1,-1],[92,"","Statistik Antar Kerja Bulan Februari 2018","2018","2018-02-28",81,"","",130,-1,-1,-1],[93,"","Statistik Antar Kerja Bulan April 2018","2018","2018-04-30",81,"","",130,-1,-1,-1],[94,"","Statistik Antar Kerja Bulan Januari 2019","2019","2019-01-31",81,"","",130,2,5,0],[95,"","Statistik Antar Kerja Bulan Februari 2019","2019","2019-02-28",81,"","",130,2,5,0],[96,"","Statistik Antar Kerja Bulan Maret 2019","2019","2019-03-31",81,"","",130,2,5,0],[97,"","Evaluasi Renstra dan Rancangan Awal Renstra","2020","2020-12-18",-1,"7 hlm.","",29,6,4,0],[98,"","Sosialisasi Penanganan Gratifikasi Pemerintah Kab. Banyumas","2020","2020-11-10",-1,"12 hlm.","",32,6,4,0],[99,"","Data dan Informasi Ketenagakerjaan","2019","2019-03-25",86,"12 hlm.","",19,3,2,0],[100,"","Sosialisasi Penanganan Benturan Kepentingan: Implementasi Pengelolaan Benturan Kepentingan di Lingkungan Pemerintah Kab. Banyumas Tahun 2020","2020","2020-11-10",55,"13 hlm.","",5,6,4,0],[101,"","Capaian dan Proyeksi TPB 2023 Serta Status","2020","",-1,"17 hlm.","",134,1,3,0],[102,"","Bimbingan Teknis Aplikasi Satu Data Ketenagakerjaan","2019","2019-03-25",-1,"9 hlm.","",2,-1,-1,-1],[103,"","Perda Kab. Banyumas No. 21 Tahun 2011 tentang Retribusi Perizinan Tertentu di Kab. Banyumas","2011","",24,"44 hlm.","",35,2,5,0],[104,"","Konsultasi Publik Rancangan Awal RKPD Kab. Banyumas Tahun 2022","2021","2021-02-11",64,"14 hlm.","",104,6,4,0],[105,"","Rancangan Awal RKPD Kab. Banyumas Tahun 2022","2021","",21,"","",104,6,4,0],[106,"","Buku Lagu","2021","",-1,"","",8,6,4,0],[107,"","Pelaksanaan Reformasi Birokrasi di Kab. Banyumas","2020","2020-08",-1,"48 hlm.","",110,1,2,0],[108,"","Penyelenggaraan Implementasi SAKIP Pemerintah Kab. Banyumas","2020","2020-08",-1,"32 hlm.","",120,1,2,0],[109,"","Perbup Banyumas No. 70 Tahun 2019 tentang Road Map Reformasi Birokrasi Kab. Banyumas Tahun 2019-2023","2019","",93,"","",35,2,5,0],[110,"","Laporan Purna Kegiatan Pembinaan Sarana Industrial dan Outsourcing dan Kegiatan May Day TA 2019","2019","",41,"","",63,2,5,0],[111,"","Laporan Purna Kegiatan Penguatan Organisasi Buruh TA 2019","2019","",41,"","",63,2,5,0],[112,"","Laporan Purna Kegiatan Pencegahan Fasilitasi dan Penyuluhan Tata Cara Penyelesaian Perselisihan Hubungan Industrial Tahun 2019","2019","",41,"","",63,2,5,0],[113,"","Evaluasi Laporan Triwulan I Tahun Anggaran 2019","2019","",34,"","",27,-1,-1,-1],[114,"","Product Comparison Tables Network Video Audio and Access Control","2019","",1,"36 hlm.","eng",95,2,5,0],[115,"","Petunjuk Teknis Penggunaan Aplikasi E-Project","2019","",10,"25 hlm.","",24,2,5,0],[116,"","Buletin Pentas Informatif dan Inovatif Rebut Pasar Kerja ASEAN","2019","",56,"70 hlm.","",12,-1,-1,-1],[117,"","Buletin Pentas Informatif dan Inovatif Milenial Indonesia: Genggam Asia Pasifik","2019","",56,"60 hlm.","",12,-1,-1,-1],[118,"","Buletin Kata Datin Hiwas","2019","",85,"80 hlm.","",12,-1,-1,-1],[119,"","Buletin Pentas Informatif dan Inovatif Fenomena Difabel di Usia Kerja Dinamika Difabel di Pasar Kerja Kiprah Difabel di Era Digital","2019","",56,"64 hlm.","",12,-1,-1,-1],[120,"","Info Datin Hiwas Pusat Data dan Informasi Ketenagakerjaan","2019","",56,"11 hlm.","",38,-1,-1,-1],[121,"","Laporan Akhir Kegiatan Pembinaan Struktur Skala Upah dan Fasilitasi Kesejahteraan Tenaga Kerja TA 2019","2019","",41,"","",60,2,5,0],[122,"","Laporan Akhir Kegiatan Monitoring UMK dan THR Usulan dan Sosialisasi UMK 2020 TA 2019","2019","",41,"","",60,2,5,0],[123,"","Buku Manual Aplikasi Satu Data Ketenagakerjaan","2018","2018-02",85,"132 hlm.","",9,2,5,0],[124,"","Laporan Purna Kegiatan Penyebarluasan Informasi Pasar Kerja Kab. Banyumas Tahun 2018","2018","2018-12-31",81,"","",63,2,5,0],[125,"","Laporan Purna Kegiatan Sosialisasi Berbagai Peraturan Pelaksanaan tentang Ketenagakerjaan Kab. Banyumas Tahun 2018","2018","2018-12-31",81,"","",63,-1,-1,-1],[126,"","Laporan Purna Kegiatan Pengendalian dan Pembinaan Lembaga Penyalur Tenaga Kerja Kab. Banyumas Tahun 2018","2018","2018-12-31",81,"","",63,-1,-1,-1],[127,"","Laporan Purna Kegiatan Pembangunan Gedung Pelayanan Terpadu Satu Atap Penempatan Tenaga Kerja Luar Negeri (LTSA) Kab. Banyumas Tahun 2018","2018","2021-12-31",81,"","",63,-1,-1,-1],[128,"","Laporan Akhir Kegiatan Sosialisasi Berbagai Peraturan Pelaksanaan tentang Ketenagakerjaan TA 2018","2018","2018-12",41,"","",60,-1,-1,-1],[129,"","Laporan Akhir Kegiatan Monitoring UMK dan THR Usulan dan Sosialisasi UMK TA 2018","2018","2018-12",41,"","",60,-1,-1,-1],[130,"","Laporan Akhir Kegiatan Pembinaan Struktur Skala Upah dan Fasilitasi Kesejahteraan Tenaga Kerja TA 2018","2018","2018-12",41,"","",60,-1,-1,-1],[131,"","Laporan Akhir Kegiatan Pelatihan Penguatan Organisasi Buruh Agar Meningkat Produktivitas Kerja TA 2018","2018","2018-12",41,"","",60,-1,-1,-1],[132,"","Laporan Purna Kegiatan Fasilitasi Penyelesaian Kasus TKI/CTKI Kab. Banyumas Tahun 2018","2018","2018-12-31",41,"","",63,-1,-1,-1],[133,"","BBPLK Bandung Balai Besar Pengembangan Latihan Kerja","2018","",56,"18 hlm.","",3,-1,-1,-1],[134,"","Surat Perintah Kerja (SPK) Pekerjaan Pengadaan Sewa Perlengkapan dan Peralatan Kantor TA 2018","2018","2018-07-13",81,"","",123,-1,-1,-1],[135,"","Katalog UMKM Kelompok Usaha Produktif Potensi Lokal Sektor Makanan Olahan Produk Unggulan Kab. Banyumas","2013","",-1,"66 hlm.","",47,-1,-1,-1],[136,"","Katalog Produk Unggulan Kab. Banyumas","2013","2013-11-01",32,"38 hlm.","",46,-1,-1,-1],[137,"","Kepmenakertrans RI No. 309 Tahun 2013 tentang Pedoman Penyusunan Perencanaan Tenaga Kerja Provinsi dan Kabupaten/Kota","2013","2013-11-21",89,"48 hlm.","",35,-1,-1,-1],[138,"","Pedoman Umum dan Petunjuk Pelaksanaan Pendayagunaan Tenaga Kerja Sukarela","2015","2015-05",60,"51 hlm.","",81,-1,-1,-1],[139,"","Himpunan Peraturan Perundang-Undangan Bidang Perencanaan Tenaga Kerja","2015","2015-08",60,"397 hlm.","",34,-1,-1,-1],[140,"","Balai Latihan Kerja Lembang","2016","",16,"20 hlm.","",4,-1,-1,-1],[141,"","Data dan Informasi Kab. Banyumas 2016","2016","2016-08",18,"315 hlm.","",20,-1,-1,-1],[142,"","Rencana Strategis Kementerian Koperasi dan UKM Tahun 2015-2019","2016","2016-06-29",61,"62 hlm.","",118,-1,-1,-1],[143,"","Strategi Penguatan Pelaksanaan Pengarusutamaan Gender di Kabupaten/Kota","2016","2016-12",28,"","",78,-1,-1,-1],[144,"","Potensi dan Peluang Investasi Kab. Banyumas","2016","2016-09-01",8,"56 hlm.","",40,-1,-1,-1],[145,"","Buku Data Statistik Ketenagakerjaan Ketransmigrasian dan Kependudukan","2016","2016-12-30",84,"108 hlm.","",129,-1,-1,-1],[146,"","Panduan Praktis Menuju Wirausaha Mandiri","2017","",56,"49 hlm.","",79,-1,-1,-1],[147,"","Data dan Informasi Pekerja Anak","2017","2017-05",86,"75 hlm.","",82,9,1,0],[148,"","Data dan Informasi Upah Pekerja/Buruh Tahun 2017","2017","2017-05",86,"114 hlm.","",138,-1,-1,-1],[149,"","Buku Panduan Musyawarah Perencanaan Pembangunan Daerah Kab. Banyumas Tahun 2017","2017","2017-03-29",-1,"20 hlm.","",10,-1,-1,-1],[150,"","Data dan Informasi Tenaga Kerja Perempuan","2017","2017-06",86,"87 hlm.","",136,-1,-1,-1],[151,"","Statistik Ketenagakerjaan Edisi 1 Tahun 2017","2017","2017-06",56,"103 hlm.","",129,9,1,0],[152,"","Jenis-Jenis Terapan Teknologi Tepat Guna","2017","2017-06",56,"50 hlm.","",135,-1,-1,-1],[153,"","Pedoman Penyelenggaraan Program Desa Migran Produktif","2017","2017-08",60,"33 hlm.","",81,-1,-1,-1],[154,"","Buku Manual Aplikasi Permenakertrans No. 1 Tahun 2014","2017","2017-06",56,"182 hlm.","",9,10,1,0],[155,"","Petunjuk Pelaksanaan Wirausaha Baru Melalui Tenaga Kerja Mandiri","2017","2017-09-08",56,"42 hlm.","",93,-1,-1,-1],[156,"","Petunjuk Pelaksanaan Kegiatan Padat Karya Infrastruktur Tahun 2017","2017","",50,"74 hlm.","",93,-1,-1,-1],[157,"","Materi Diklat Kepemimpinan Tk. IV BPSDMD Prov. Jateng Bekerja Sama dengan Pemerintah Kab. Banyumas Tahun 2018","2018","",3,"","",69,-1,-1,-1],[158,"","Profil Dinas Tenaga Kerja dan Transmigrasi Prov. Jateng","2018","",48,"45 hlm.","",97,-1,-1,-1],[159,"","Petunjuk Teknis Pendataan Jumlah UMKM Tahun 2018","2018","2018-08-23",39,"","",94,-1,-1,-1],[160,"","Buku Panduan Rapat Koordinasi Penguatan E-Government di Kab. Banyumas","2018","2018-03-29",38,"16 hlm.","",10,-1,-1,-1],[161,"","Jodohnya Orang Cerdas","2018","",-1,"251 hlm.","",11,-1,-1,-1],[162,"","Data dan Informasi Kab. Banyumas 2018","2018","2018-08",38,"322 hlm.","",20,-1,-1,-1],[163,"","Galeri Data dan Indikator Strategis Ketenagakerjaan","2018","2018-09-01",85,"56 hlm.","",19,-1,-1,-1],[164,"","Fashion Technology Bisnis Manajemen","2019","",56,"","",30,2,5,0],[165,"","Rakor Evaluasi Kinerja Pembangunan Semester II TA 2019","2019","2019-12-04",39,"","",109,2,5,0],[166,"","Info Datin Hiwas Pusat Data dan Informasi Ketenagakerjaan","2019","",-1,"","",38,-1,-1,-1],[167,"","Budaya Literasi Data Satu Data Ketenagakerjaan","2019","2019-11-01",85,"77 hlm.","",65,-1,-1,-1],[168,"","Buku Panduan Musyawarah Perencanaan Pembangunan Daerah Kab. Banyumas Tahun 2020","2020","2020-03-19",80,"16 hlm.","",10,-1,-1,-1],[169,"","Perkumpulan Sedulur Aspirasi Warga Banyumas","2020","",-1,"9 hlm.","",75,-1,-1,-1],[170,"","Buletin Bicara Data Berani Memulai Link and Match Ketenagakerjaan","2021","",-1,"54 hlm.","",12,-1,-1,-1],[171,"","Buku Panduan Musyawarah Perencanaan Pembangunan Kab. Banyumas Tahun 2021 untuk RKPD Kab. Banyumas Tahun 2022","2021","2021-03-23",80,"15 hlm.","",10,-1,-1,-1],[172,"","Perubahan RPJMD Kab. Banyumas 2018-2023","2021","2021-04-16",-1,"","",106,6,4,0],[173,"","Permenaker RI No. 15 Tahun 2020 tentang Satu Data Ketenagakerjaan","2021","2019-06-12",73,"","",35,-1,-1,-1],[174,"","Statistik Antar Kerja Bulan April 2019","2019","2019-04-30",81,"","",130,2,5,0],[175,"","Statistik Antar Kerja Bulan Mei 2019","2019","2019-05-31",81,"","",130,2,5,0],[176,"","Statistik Antar Kerja Bulan Juni 2019","2019","2019-06-30",81,"","",130,2,5,0],[177,"","Statistik Antar Kerja Bulan Juli 2019","2019","2019-07-31",81,"","",130,2,5,0],[178,"","Statistik Antar Kerja Bulan Agustus 2019","2019","2019-08-31",81,"","",130,2,5,0],[179,"","Statistik Antar Kerja Bulan September 2019","2019","2019-09-30",81,"","",130,2,5,0],[180,"","Statistik Antar Kerja Bulan Oktober 2019","2019","2019-10-31",81,"","",130,2,5,0],[181,"","Statistik Antar Kerja Bulan November 2019","2019","2019-11-30",81,"","",130,2,5,0],[182,"","Indeks Gini Kab. Banyumas Tahun 2015","2016","2016-09",19,"","",37,-1,-1,-1],[183,"","Berjuang Untuk Mandiri Melalui Pendidikan","2018","2018-10",97,"37 hlm.","",70,-1,-1,-1],[184,"","Iman Melahirkan Prestasi","2018","2018-09",97,"37 hlm.","",70,-1,-1,-1],[185,"","Meneladani Keluarga Ibrahim","2018","2018-08",97,"37 hlm.","",113,-1,-1,-1],[186,"","Muslimah The Changemaker","2018","2018-03",97,"37 hlm.","",113,-1,-1,-1],[187,"","Lebih Bertawakal Dengan Hidup Halal","2019","2019-11-01",97,"37 hlm.","",113,-1,-1,-1],[188,"","Bertawakal Dengan Hidup Halal","2019","2019-10",97,"37 hlm.","",113,-1,-1,-1],[189,"","Hijrah Tanpa Batas","2019","2019-09-01",97,"37 hlm.","",113,-1,-1,-1],[190,"","Hikmah Idul Adha","2019","2019-08",97,"37 hlm.","",113,-1,-1,-1],[191,"","Si Kecil Jadi Teladan","2019","2019-07",97,"37 hlm.","",113,-1,-1,-1],[192,"","Tradisi Membumikan Silaturahmi","2019","2019-06",97,"39 hlm.","",113,-1,-1,-1],[193,"","Ramadhan dan Konsumerisme","2019","2019-05",97,"37 hlm.","",113,-1,-1,-1],[194,"","Buku Profil Ketenagakerjaan Koperasi & UKM Tahun 2019","2019","2019-01",40,"100 hlm.","",97,-1,-1,-1],[195,"","(judul tertukar dengan No. 194 — perlu konfirmasi)","2019","",-1,"","",-1,-1,-1,-1],[196,"","","2019","",-1,"","",-1,-1,-1,-1],[197,"","","2019","",-1,"","",-1,-1,-1,-1],[198,"","ROG GX800 Defy Convention Change The Game Dual Graphics Liquid Cooled Real 4K UHD Gaming","2017","2017-01",77,"83 hlm.","ind/eng",96,-1,-1,-1],[199,"","Puding dan Penutup Tradisional Saji","2017","2017-02-08",-1,"31 hlm.","",119,-1,-1,-1],[200,"","Bukti Cinta Pada Ilahi","2017","2017-09-01",-1,"39 hlm.","",113,-1,-1,-1],[201,"","Mangsa Ketiga Irit Nganggone Banyu","2018","2018-09-01",98,"38 hlm.","",7,-1,-1,-1],[202,"","Peluang Fasilitasi Kadin DKI Jakarta di Pasar Digital","2019","2019-08",71,"66 hlm.","",67,-1,-1,-1],[203,"","Peluang Tokoh Koperasi Bicara","2019","2019-07",71,"80 hlm.","",67,-1,-1,-1],[204,"","Ramadhan dan Konsumerisme","2019","2019-05",97,"38 hlm.","",113,-1,-1,-1],[205,"","Pemimpin yang Dirindukan","2019","2019-04-01",97,"37 hlm.","",113,-1,-1,-1],[206,"","Bersama Memandirikan","2019","2019-03",97,"38 hlm.","",113,-1,-1,-1],[207,"","Komunitas Keren Dakwah Efisien","2019","2019-02",97,"38 hlm.","",113,-1,-1,-1],[208,"","Menjadi Wadah Anak Mengenal Dakwah","2019","2019-01",97,"38 hlm.","",113,-1,-1,-1],[209,"","Cinta Yang Tak Semestinya","2020","2020-02",97,"38 hlm.","",113,-1,-1,-1],[210,"","Era Baru Transaksi Keuangan","2020","2020-01",97,"38 hlm.","",113,-1,-1,-1],[211,"","Purbalingga Memikat Desa Wisata Purbalingga","2019","",25,"22 hlm.","",80,-1,-1,-1],[212,"","PKK Jawa Tengah Juara Umum Nasional","2017","2017",76,"51 hlm.","",76,-1,-1,-1],[213,"","Pelaksanaan Reformasi Birokrasi Pada Pemerintah Kab. Banyumas","2017","2017-12-12",22,"","",110,-1,-1,-1],[214,"","Paparan Implementasi SAKIP","2019","",41,"","",120,-1,-1,-1],[215,"","Perda Kab. Banyumas dan Perbup Banyumas","2016","2016",13,"47 hlm.","",35,-1,-1,0],[216,"","Indeks Gini Kab. Banyumas Tahun 2015","2016","2016-09-01",19,"61 hlm.","",37,-1,-1,-1],[217,"","Profil Perkembangan Kependudukan Tahun 2015","2016","2016-12-31",37,"90 hlm.","",51,-1,-1,-1],[218,"","Renstra Kementerian Koperasi dan UKM Tahun 2015-2019","2016","2016-12-31",61,"63 hlm.","",118,-1,-1,-1],[219,"","Permendagri RI No. 67 Tahun 2011 tentang Perubahan Atas Permendagri No. 15 Tahun 2008 tentang Pedoman Umum Pelaksanaan PUG di Daerah","2016","2011-12-28",72,"11 hlm.","",35,1,2,0],[220,"","Dokumen Pelaksanaan Perubahan Anggaran Satuan Kerja Perangkat Daerah (DPPA SKPD)","2016","2016-12-31",9,"150 hlm.","",18,1,3,-1],[221,"","Laporan Keuangan SKPD","2016","2016-12-31",17,"200 hlm.","",61,-1,-1,-1],[222,"","Standar Operasional Prosedur","2016","2016-12-31",32,"80 hlm.","",122,1,2,0],[223,"","Perbup Banyumas No. 34 Tahun 2011","2016","2016-12-31",13,"130 hlm.","",35,-1,-1,-1],[224,"","Laporan Pendataan Pengangguran","2016","2016-10",67,"20 hlm.","",88,3,2,0],[228,"","Perbup Banyumas No. 14 Tahun 2021 tentang Penyelenggaraan Satu Data Kab. Banyumas","2016","2021-03-02",24,"23 hlm.","",35,1,2,-1],[230,"","Sistem Akuntabilitas Kinerja Instansi Pemerintah (SAKIP)","2017","2017-10-25",35,"10 hlm.","",120,-1,-1,-1],[231,"","Arah Kebijakan Pembangunan Kab. Banyumas Tahun 2018-2023","2017","2017-10-26",94,"8 hlm.","",49,-1,-1,-1],[232,"","Percepatan Pemutakhiran Data dan Sertifikat Nomor Induk Koperasi (NIK) melalui Online Data System (ODS)","2017","2017-11-29",61,"","",56,-1,-1,-1],[233,"","Penguatan Akuntabilitas Kinerja dalam Rangka Reformasi Birokrasi Menuju Pemerintahan yang Bersih dan Akuntabel Efektif dan Efisien serta Pelayanan Publik yang Berkualitas","2017","2017-08-06",62,"9 hlm.","",1,-1,-1,-1],[234,"","Dokumen Indikator Kinerja Utama","2017","2017-10-25",4,"14 hlm.","",36,-1,-1,-1],[235,"","Kebijakan dan Program Perencanaan dan Pengembangan Ketenagakerjaan","2017","2017-08-14",65,"17 hlm.","",48,-1,-1,-1],[236,"","Kebijakan Penyusunan Perencanaan Tenaga Kerja Makro","2017","2017-08-14",68,"25 hlm.","",90,-1,-1,-1],[237,"","Data dan Informasi Penyusunan Perencanaan Tenaga Kerja Makro","2017","2017-08-15",5,"16 hlm.","",19,1,2,0],[238,"","Laporan Hasil Training of Trainer (TOT) Perencanaan Tenaga Kerja Makro","2017","2017-07-31",39,"20 hlm.","",133,-1,-1,-1],[239,"","Rancangan Rencana Kerja Pemerintah Daerah Kab. Banyumas Tahun 2018","2017","2017-12-31",80,"250 hlm.","",104,6,4,0],[240,"","Dokumen Pelaksanaan Perubahan Anggaran Satuan Kerja Perangkat Daerah (DPPA SKPD)","2017","2017-12-31",39,"350 hlm.","",18,9,1,0],[241,"","DPA SKPD Tahun Anggaran 2017","2017","2017",39,"","",17,10,1,0],[242,"","Standar Satuan Harga Tahun 2017","2017","2017",39,"369 hlm.","",128,-1,-1,0],[243,"","Manajemen Usaha dan Aspek Legalitas Usaha","2017","2017-10",95,"13 hlm.","",68,-1,-1,-1],[244,"","Kertas Kerja Evaluasi Akuntabilitas Kinerja Instansi Pemerintah","2018","2018-12-31",-1,"46 hlm.","",25,-1,-1,-1],[245,"","Penyempurnaan Perencanaan Tenaga Kerja Daerah Provinsi Jawa Tengah Tahun 2018-2023","2018","2018-12-14",47,"16 hlm.","",90,-1,-1,-1],[246,"","Metode Perhitungan Proyeksi Tenaga Kerja dan 4 (Empat) Aspek Perencanaan Tenaga Kerja Daerah","2018","2018",-1,"8 hlm.","",90,-1,-1,-1],[247,"","Lampiran Renja OPD Kab. Banyumas Tahun 2018","2018","2018-12-31",47,"414 hlm.","",117,2,5,0],[248,"","Dokumen Pelaksanaan Perubahan Anggaran Satuan Kerja Perangkat Daerah (DPPA SKPD)","2018","2018-12-31",39,"300 hlm.","",18,2,5,0],[249,"","Rancangan Rencana Kerja Pemerintah Daerah (RKPD)","2018","2018-01-01",80,"500 hlm.","",104,2,5,0],[250,"","Paparan Implementasi SAKIP","2018","2018-01-01",39,"80 hlm.","",120,-1,-1,0],[251,"","Pedoman Penyusunan Perencanaan Tenaga Kerja Mikro di Perusahaan Edisi IV","2018","2018-12",88,"195 hlm.","",81,-1,-1,-1],[252,"","Rapat Koordinasi Evaluasi Kinerja Pembangunan Triwulan IV Kondisi s/d Oktober TA 2018","2018","2018-11-21",39,"9 hlm.","",109,-1,-1,-1],[253,"","Rancangan Rencana Tenaga Kerja Daerah Kab. Banyumas","2018","2018-12",39,"101 hlm.","",116,-1,-1,-1],[254,"","Rencana Kerja dan Anggaran Satuan Kerja Perangkat Daerah Dinnakerkop UKM","2018","2018",39,"","",102,2,5,0],[255,"","DPA SKPD Tahun Anggaran 2018","2018","2018",39,"","",17,2,5,0],[256,"","Perencanaan Tenaga Kerja Mikro di Perusahaan Edisi 4","2018","2018",88,"198 hlm.","",90,-1,-1,-1],[257,"","Analisis Situasi Ibu dan Anak (ASIA)","2018","2018-10-15",6,"14 hlm.","",0,-1,-1,-1],[258,"","Rakor Evaluasi Kinerja Pembangunan Semester II TA 2019","2019","2019-12-04",39,"21 hlm.","",109,2,5,0],[259,"","Paparan Implementasi SAKIP","2019","2019-12-30",39,"21 hlm.","",120,-1,-1,-1],[260,"","Rancangan Rencana Kerja Pemerintah Daerah (RKPD) Kab. Banyumas Tahun 2019","2019","2019-12-31",80,"298 hlm.","",104,2,5,0],[261,"","DPA SKPD Tahun Anggaran 2019","2019","2019",39,"","",17,2,5,0],[262,"","DPPA SKPD Tahun Anggaran 2019","2019","2019",39,"","",18,2,5,0],[263,"","Standar Satuan Harga Pemda BMS Tahun Anggaran 2019","2019","2019",80,"418 hlm.","",128,2,5,0],[272,"","Profil Perkembangan Kependudukan Kab. Banyumas Tahun 2020","2020","2020-12-31",66,"98 hlm.","",51,-1,-1,-1],[273,"","Lampiran Rencana Kerja (Renja) Perangkat Daerah Kab. Banyumas Tahun 2021","2020","2020-12-31",80,"139 hlm.","",117,6,4,0],[274,"","Rancangan Rencana Kerja Pemerintah Daerah (RKPD) Kab. Banyumas Tahun 2021","2020","2020-12-31",80,"431 hlm.","",104,6,4,0],[275,"","Lampiran Rencana Kerja (Renja) Perangkat Daerah Kab. Banyumas Tahun 2021","2020","2020-12-31",80,"233 hlm.","",117,6,4,0],[276,"","PermenPANRB RI No. 4 Tahun 2020 tentang Jabatan Fungsional Perencana","2020","2020-12-31",74,"55 hlm.","",35,3,2,0],[277,"","Standar Operasional Prosedur (SOP) Dinnakerkop UKM Kab. Banyumas 2020","2020","2020-12-31",39,"250 hlm.","",122,-1,-1,-1],[278,"","Katalog Produk UMKM Banyumas","2020","2020-12-31",39,"50 hlm.","",46,-1,-1,-1],[279,"","Standar Operasional Prosedur (SOP) Dinnakerkop UKM Kab. Banyumas 2020","2020","2020-12-31",39,"120 hlm.","",122,3,2,0],[280,"","DPPA SKPD 2020 & Dokumen Pelaksanaan Pergeseran Anggaran SKPD 2020","2020","2020",39,"","",18,10,1,0],[281,"","DPA SKPD 2020","2020","2020",39,"","",17,10,1,0],[282,"","Satu Data Ketenagakerjaan 2020","2020","2020-09-01",73,"86 hlm.","",124,-1,-1,-1],[283,"","Perda Kab. Banyumas No. 14 Tahun 2019","2020","2020",11,"24 hlm.","",35,-1,-1,-1],[286,"","Lingkungan Kerja dan Kesehatan Kerja","2021","2021-09-10",41,"","",43,3,2,0],[287,"","Syarat dan Fasilitas Kesejahteraan Kerja","2021","2021-09-10",41,"","",54,3,2,0],[288,"","Perbup Banyumas No. 14 Tahun 2021","2021","2021-12-31",80,"","",35,-1,-1,0],[289,"","Laporan Tahunan Pejabat Pengelola Informasi dan Dokumentasi (PPID)","2021","2021-12-31",41,"","",77,-1,-1,-1],[290,"","Kemudahan Perlindungan dan Pemberdayaan Koperasi dan Usaha Mikro","2021","2021-12-31",41,"","",56,-1,-1,-1],[291,"","Proyeksi Kebutuhan Tenaga Kerja di Perusahaan Berdasarkan Kompetensi pada Sektor Pariwisata Tahun 2022-2025","2021","2021-12-31",56,"84 hlm.","",100,-1,-1,-1],[292,"","Proyeksi Kebutuhan Tenaga Kerja di Perusahaan Berdasarkan Kompetensi pada Sektor Otomotif Tahun 2022-2025","2021","2021-12",56,"41 hlm.","",100,-1,-1,-1],[293,"","Proyeksi Kebutuhan Tenaga Kerja di Perusahaan Berdasarkan Kompetensi pada Sektor Teknologi Informasi dan Komunikasi Tahun 2022-2025","2021","2021-12",56,"53 hlm.","",100,-1,-1,-1],[294,"","Rancangan Strategis Kementerian Koperasi dan UMKM","2021","2021-08",61,"12 hlm.","",118,-1,-1,-1],[295,"","Perjanjian Kerja Sama antara FEB UNSOED dan Dinnakerkop UKM tentang Program MBKM pada Prodi S1 Akuntansi FEB UNSOED","2021","2021-08",53,"7 hlm.","",53,6,4,0],[296,"","Rencana Kerja Dinnakerkop UKM 2022","2021","2021",40,"","",117,6,4,0],[297,"","Perubahan Rencana Strategis","2021","2021",40,"","",118,-1,-1,-1],[298,"","DPPA SKPD 2021","2021","2021",40,"","",18,6,4,0],[299,"","DPA 2021","2021","2021",40,"","",17,6,4,0],[300,"","Reviu LPPD 2020 & Penyusunan LPPD 2021 Dinnakerkop UKM Kab. Banyumas","2022","2022-01-01",80,"13 hlm.","",59,-1,-1,0],[301,"","Konsultasi Publik Awal RKPD Kab. Banyumas 2023","2022","2022-01-23",64,"18 hlm.","",104,1,-1,0],[302,"","FGD Rencana Tindak Pengendalian (RTP) Risiko Prioritas Pemerintah Kab. Banyumas Tahun 2022","2022","2022-01-27",21,"16 hlm.","",108,-1,-1,0],[303,"","FGD Rencana Tindak Pengendalian (RTP) Risiko Prioritas Pemerintah Kab. Banyumas Tahun 2023","2022","2022-01-31",21,"14 hlm.","",108,1,2,0],[304,"","Dokumen Pelaksanaan Anggaran (DPA) Tahun 2022","2022","2022-01-31",41,"230 hlm.","",17,6,4,0],[305,"","RKPD Kab. Banyumas Tahun 2023","2022","2022-01-31",21,"900 hlm.","",104,6,4,0],[306,"","Standar Data dan Metadata Data","2022","2022-07-19",73,"86 hlm.","",127,-1,-1,-1],[307,"","Kumpulan Regulasi Penyelenggaraan Satu Data Banyumas","2022","2022",23,"24 hlm.","",111,-1,-1,-1],[308,"","Petunjuk Teknis Musyawarah Perencanaan Pembangunan Kab. Banyumas Tahun 2022","2022","2022-03-22",21,"12 hlm.","",42,-1,-1,-1],[309,"","Data dan Informasi Kab. Banyumas 2022","2022","2022-06",38,"332 hlm.","",20,-1,-1,-1],[310,"","Perjanjian Kerja Sama antara FEB UNSOED dan Dinnakerkop UKM tentang Program Implementasi MBKM pada Prodi S1 Administrasi Perkantoran FEB UNSOED","2022","2022-08",53,"7 hlm.","",53,-1,-1,0],[311,"","Buku Profil Perkembangan Kependudukan Kab. Banyumas Tahun 2022","2022","2023",37,"98 hlm.","",51,-1,-1,-1],[312,"","Rencana Kerja Dinnakerkop UKM 2023","2022","2022",40,"","",117,-1,-1,-1],[313,"","Pilot Project Penyusunan Rencana Tenaga Kerja PT Stanli Trijaya Mandiri","2022","2022-12",91,"123 hlm.","",116,-1,-1,-1],[314,"","Pilot Project Penyusunan Rencana Tenaga Kerja PT Narumi Indonesia","2022","2022-12",91,"145 hlm.","",116,-1,-1,-1],[318,"","RKPD Kab. Banyumas 2023","2023","",39,"100 hlm.","",104,-1,-1,-1],[319,"","Rancangan Awal RKPD Kab. Banyumas Tahun 2023","2023","",20,"250 hlm.","",104,6,4,-1],[320,"","Data dan Informasi Kab. Banyumas","2023","2023-04-01",38,"400 hlm.","",20,-1,-1,-1],[321,"","Ketenagakerjaan dalam Data Edisi 1","2023","2023-06",90,"131 hlm.","",19,-1,-1,-1],[322,"","Ketenagakerjaan dalam Data Edisi 2","2023","2023-10",90,"114 hlm.","",19,-1,-1,-1],[323,"","Laporan Akhir Kajian Peta Potensi dan Peluang Investasi di Kab. Banyumas","2023","2023-12",78,"185 hlm.","",40,4,-1,-1],[324,"","Arah Kebijakan RPJPD Kab. Banyumas Tahun 2025-2045","2023","2023",21,"20 hlm.","",107,6,4,-1],[325,"","Buku Profil Ketenagakerjaan Koperasi dan UKM 2023","2023","2023",40,"57 hlm.","",97,-1,-1,-1],[326,"","Visi Misi dan Sasaran Pokok RPJPD Kab. Banyumas Tahun 2025-2045","2024","2024-01-10",21,"30 hlm.","",107,6,4,-1],[327,"","Rencana Kerja Pemda Banyumas 2024","2024","2024",79,"","",117,-1,-1,-1],[328,"","Rencana Pembangunan Kab. Banyumas 2024","2024","2024",79,"","",115,-1,-1,-1],[329,"","Rancangan Awal Rencana Kerja Pemda Kab. Banyumas","2024","2024",79,"","",117,6,4,-1],[330,"","Buku Panduan Musrenbang dan RPJPD 2025-2045","2024","2024-03-27",20,"30 hlm.","",10,2,5,0],[331,"","Musrenbang RPJPD Kab. Banyumas Tahun 2025-2045 dan RKPD Tahun 2025","2024","2024-03-27",20,"31 hlm.","",71,-1,-1,-1],[332,"","Forum Konsultasi Publik Ranwal RPJPD Kab. Banyumas Tahun 2025-2045","2024","2024-01-16",20,"20 hlm.","",107,6,4,-1],[333,"","Laporan Pertanggungjawaban Pengurus dan Pengawas Tahun 2023 dan Program Kerja Tahun 2024","2024","2024-01",58,"56 hlm.","",62,-1,-1,-1],[334,"","Rekapitulasi Data Informasi Pasar Kerja","2024","2024",40,"4 hlm.","",39,-1,-1,-1],[335,"","Capaian Kinerja Aspek Pembangunan","2024","2024-03-20",80,"17 hlm.","",14,-1,-1,-1],[336,"","Sub Aspek Pembangunan Penanganan Tingkat Pengangguran Terbuka","2024","2024",80,"11 hlm.","",88,-1,-1,-1],[337,"","Perencanaan Tenaga Kerja Makro","2024","2024-05-16",56,"8 hlm.","",90,-1,-1,-1],[338,"","Musrenbang RPJPD Kab. Banyumas Tahun 2025-2045 dan RKPD","2024","2024-03-27",20,"","",71,6,4,-1],[348,"","Laporan Kinerja Instansi Pemerintah (LKjIP) 2019","2020","2020-01",39,"","",58,0,0,0],[366,"","Laporan Pertanggungjawaban Pengurus dan Pengawas Tahun 2020","2021","2021-01",58,"52 hlm.","",62,8,-1,-1],[367,"","Laporan Kinerja Instansi Pemerintah 2020","2021","2021-01",41,"29 hlm.","",58,0,0,0],[368,"","Rencana Kerja (Renja) 2021","2021","2021",81,"","",117,5,0,0],[370,"","Perjanjian Kinerja Tahun 2021","2021","2021-01",41,"","",91,5,0,0],[378,"","Rencana Tindak Pengendalian (RTP) Operasional Tahun 2022","2022","2022-03",41,"","",108,7,0,0],[379,"","Rencana Tindak Pengendalian (RTP) Operasional Tahun 2022","2022","2022-03-31",41,"","",108,7,0,0],[380,"","Rencana Tindak Pengendalian (RTP) Strategis Tahun 2022","2022","2022-03",41,"","",108,5,0,0],[381,"","Rencana Tindak Pengendalian (RTP) Strategis Tahun 2022","2022","2022-03",41,"","",108,5,0,0],[382,"","Dokumen SAKIP Dinnakerkop UKM Tahun 2020","2022","2022-01",41,"","",120,7,0,0],[383,"","Buku Profil Ketenagakerjaan Koperasi dan UMKM","2022","2022-01",41,"56 hlm.","",97,7,0,0],[384,"","Laporan Kinerja Instansi Pemerintah Tahun 2021","2022","2022-01",41,"35 hlm.","",58,7,0,0],[385,"","Implementasi Standar Data dan Metadata dalam Penyediaan Data Ketenagakerjaan Daerah Tahun 2022","2022","2022-05",87,"","",127,5,0,0],[386,"","Database Ketenagakerjaan Provinsi dan Kab/Kota se-Jawa Tengah","2022","2022-05-24",49,"","",21,7,0,0],[387,"","Proposal Riset Institusi UNSOED: Pengembangan Model Pembangunan Berkelanjutan di Wilayah Kab. Banyumas","2023","2023-12-27",96,"","",99,-1,-1,-1],[396,"","Laporan Evaluasi Rencana Tindak Pengendalian (RTP) Tahun 2023","2024","2024-01",41,"","",108,5,0,0],[397,"","Rencana Tindak Pengendalian (RTP) Strategis 2024","2024","2024-01",41,"","",108,5,0,0],[398,"","Rancangan Rencana Tenaga Kerja Daerah Kab. Banyumas 2024-2029","2024","2024-01",41,"","",116,0,-1,0],[399,"","Rencana Tindak Pengendalian (RTP) Operasional 2024","2024","2024-01",41,"","",108,5,0,0],[400,"","Laporan Kinerja Instansi Pemerintah Tahun 2023","2024","2024-01-18",41,"","",58,7,0,0],[401,"","Renja Rencana Kerja 2025","2024","2024",41,"","",117,5,0,0],[402,"","Matriks RPD Dinnakerkop UKM 2024-2026","2024","2024",41,"","",105,0,-1,0],[403,"","Rancangan Rencana Tenaga Kerja Daerah Kab. Banyumas 2024-2029","2024","2024-12-19",41,"105 hlm.","",116,0,-1,0],[404,"","Rencana Kerja (Renja) Perubahan Dinnakerkop UKM Kab. Banyumas Tahun 2024","2024","2024",81,"","",117,0,-1,0],[405,"","Rancangan Akhir Renja Rencana Kerja Tahun 2025","2024","2024-07-15",41,"","",117,0,-1,0],[406,"","Rencana Strategis Tahun 2024-2026","2024","2024",41,"","",118,7,-1,0],[407,"","Rencana Kerja (Renja) Dinnakerkop UKM Kab. Banyumas Tahun 2020","2019","2019-01",81,"","",117,0,0,0],[408,"","Laporan Kinerja Instansi Pemerintah (LKjIP) 2018","2019","2019-01",41,"","",58,0,0,0],[417,"","Rencana Tindak Pengendalian (RTP) Tahun 2020","2020","2020-10",41,"","",108,5,0,0],[426,"","Laporan Kinerja Instansi Pemerintah (LKjIP) 2017","2018","2018-01",39,"46 hlm.","",58,0,0,0],[436,"","Rencana Strategis 2013-2018","2017","2017-01",39,"47 hlm.","",118,0,0,0],[446,"","Laporan Kinerja Instansi Pemerintah 2024","2025","2025-01",39,"","",58,7,0,-1],[447,"","Laporan Evaluasi Renstra Dinnakerkop UKM Kab. Banyumas Tahun 2024-2026","2025","2025-03",39,"","",29,7,0,-1],[448,"","Laporan Kinerja Instansi Pemerintah 2024","2025","2025-01",41,"","",58,5,0,-1],[451,"","Renstra Dinas Koperasi dan UKM Provinsi Jawa Tengah 2013","2013","2013",83,"57 hlm.","",118,0,0,0]]};
+
+        // LocalStorage Keys (v3 replaces old sample-only cache automatically)
+        const STORAGE_KEY_CATALOG = 'dinakerin_lib_books_v3';
+        const STORAGE_KEY_LOANS = 'dinakerin_lib_loans_v3';
+        const STORAGE_KEY_BANNER = 'dinakerin_banner_dismissed_v3';
+
+        // State
+        let catalog = [];
+        let loans = [];
+        let filteredCatalog = [];
+        let currentPage = 1;
+        let pageSize = 30;
+        let isFillingEmptySlot = false;
+        let autoSuggestedCode = '';
+
+        /**
+         * Decode RAW_SEED into a complete continuous array from No. 1 to No. 455
+         */
+        function buildFullDatasetFromSeed() {
+            const byNo = new Map();
+
+            RAW_SEED.d.forEach(entry => {
+                const [no, kodeOverride, judul, tahun, tanggal, pIdx, fisik, bahasaOverride, sIdx, pmIdx, tpIdx, stIdx] = entry;
+                const cleanJudul = String(judul ?? '').trim();
+                const cleanTahun = String(tahun ?? '').trim();
+                const cleanKodeOverride = String(kodeOverride ?? '').trim();
+
+                // Rows 196 and 197 in the original Excel only have Tahun 2019 without Kode/Judul
+                const hasContent = cleanJudul !== '' || cleanKodeOverride !== '';
+                const kode = hasContent
+                    ? (cleanKodeOverride || (cleanTahun ? `NP.100.${no}.${cleanTahun}` : `NP.100.${no}`))
+                    : '';
+
+                byNo.set(no, {
+                    id: 'slot_' + no,
+                    no: no,
+                    kode: kode,
+                    judul: cleanJudul,
+                    tahun: cleanTahun,
+                    tglTerbit: String(tanggal ?? '').trim(),
+                    penerbit: pIdx >= 0 ? (RAW_SEED.p[pIdx] || '') : '',
+                    fisik: String(fisik ?? '').trim(),
+                    bahasa: hasContent ? (String(bahasaOverride ?? '').trim() || 'ind') : '',
+                    subyek: sIdx >= 0 ? (RAW_SEED.s[sIdx] || '') : '',
+                    pemproses: pmIdx >= 0 ? (RAW_SEED.pm[pmIdx] || '') : '',
+                    tglProses: tpIdx >= 0 ? (RAW_SEED.tp[tpIdx] || '') : '',
+                    status: stIdx >= 0 ? (RAW_SEED.st[stIdx] || '') : '',
+                    isSlotKosong: !hasContent
+                });
+            });
+
+            const fullList = [];
+            for (let no = 1; no <= 455; no++) {
+                if (byNo.has(no)) {
+                    fullList.push(byNo.get(no));
+                } else {
+                    fullList.push(createEmptySlot(no));
+                }
+            }
+            return fullList;
+        }
+
+        /**
+         * Helper: Create item object from imported Excel row
+         */
+        function mapRowToItem(row, fallbackNo) {
+            const no = parseInt(row[0]) || fallbackNo;
+            const kode = String(row[1] ?? '').trim();
+            const judul = String(row[2] ?? '').trim();
+            const tahun = String(row[3] ?? '').trim();
+            const tglTerbit = String(row[4] ?? '').trim();
+            const penerbit = String(row[5] ?? '').trim();
+            const fisik = String(row[6] ?? '').trim();
+            const bahasa = String(row[7] ?? '').trim();
+            const subyek = String(row[8] ?? '').trim();
+            const pemproses = String(row[9] ?? '').trim();
+            const tglProses = String(row[10] ?? '').trim();
+            const status = String(row[11] ?? '').trim();
+
+            const isSlotKosong = (kode === '' && judul === '');
+
+            return {
+                id: 'slot_' + no + '_' + Math.random().toString(36).substr(2, 6),
+                no,
+                kode,
+                judul,
+                tahun,
+                tglTerbit,
+                penerbit,
+                fisik,
+                bahasa: isSlotKosong ? '' : (bahasa || 'ind'),
+                subyek,
+                pemproses,
+                tglProses,
+                status,
+                isSlotKosong
+            };
+        }
+
+        /**
+         * Create an empty slot object for a given sequence number
+         */
+        function createEmptySlot(no) {
+            return {
+                id: 'slot_' + no,
+                no: no,
+                kode: '',
+                judul: '',
+                tahun: '',
+                tglTerbit: '',
+                penerbit: '',
+                fisik: '',
+                bahasa: '',
+                subyek: '',
+                pemproses: '',
+                tglProses: '',
+                status: '',
+                isSlotKosong: true
+            };
+        }
+
+        /**
+         * Initialize App (Loads full 455 dataset immediately)
+         */
+        function initApp() {
+            const savedCatalog = localStorage.getItem(STORAGE_KEY_CATALOG);
+            const savedLoans = localStorage.getItem(STORAGE_KEY_LOANS);
+            const bannerDismissed = localStorage.getItem(STORAGE_KEY_BANNER);
+
+            if (savedCatalog) {
+                try {
+                    const parsed = JSON.parse(savedCatalog);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        catalog = parsed.map(item => ({
+                            ...item,
+                            isSlotKosong: (!item.kode?.trim() && !item.judul?.trim())
+                        }));
+                    } else {
+                        catalog = buildFullDatasetFromSeed();
+                        saveCatalogToStorage();
+                    }
+                } catch (e) {
+                    catalog = buildFullDatasetFromSeed();
+                    saveCatalogToStorage();
+                }
+            } else {
+                catalog = buildFullDatasetFromSeed();
+                saveCatalogToStorage();
+            }
+
+            if (savedLoans) {
+                try {
+                    loans = JSON.parse(savedLoans);
+                } catch (e) {
+                    loans = [];
+                }
+            }
+
+            if (bannerDismissed === 'true') {
+                document.getElementById('sample-data-banner').classList.add('hidden');
+            }
+
+            // Default dates for loan form
+            const today = new Date().toISOString().split('T')[0];
+            const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('loan-date').value = today;
+            document.getElementById('loan-due-date').value = nextWeek;
+
+            refreshAllUI();
+        }
+
+        function saveCatalogToStorage() {
+            localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalog));
+        }
+
+        function saveLoansToStorage() {
+            localStorage.setItem(STORAGE_KEY_LOANS, JSON.stringify(loans));
+        }
+
+        function refreshAllUI() {
+            // Keep catalog sorted by sequence number (No)
+            catalog.sort((a, b) => a.no - b.no);
+            updateKPIs();
+            populateFilterDropdowns();
+            applyFilters();
+            populateLoanBookSelect();
+            renderLoans();
+            renderStats();
+            lucide.createIcons();
+        }
+
+        /**
+         * Update KPI Cards & Tab Badges
+         */
+        function updateKPIs() {
+            const totalSlots = catalog.length;
+            const filledItems = catalog.filter(i => !i.isSlotKosong);
+            const emptySlots = catalog.filter(i => i.isSlotKosong).length;
+            const handover = filledItems.filter(i => i.status.toLowerCase() === 'akan diserahkan').length;
+            const borrowed = filledItems.filter(i => i.status.toLowerCase() === 'dipinjam').length;
+            const available = filledItems.length - handover - borrowed;
+            const activeLoans = loans.filter(l => l.status === 'active').length;
+
+            document.getElementById('kpi-total-slots').textContent = totalSlots.toLocaleString('id-ID');
+            document.getElementById('kpi-filled').textContent = filledItems.length.toLocaleString('id-ID');
+            document.getElementById('kpi-empty').textContent = emptySlots.toLocaleString('id-ID');
+            document.getElementById('kpi-handover').textContent = handover.toLocaleString('id-ID');
+            document.getElementById('kpi-available').textContent = Math.max(0, available).toLocaleString('id-ID');
+            document.getElementById('kpi-borrowed').textContent = borrowed.toLocaleString('id-ID');
+
+            document.getElementById('badge-catalog-count').textContent = totalSlots.toLocaleString('id-ID');
+            document.getElementById('badge-loan-count').textContent = activeLoans.toLocaleString('id-ID');
+        }
+
+        function quickFilterCompleteness(mode) {
+            switchTab('catalog');
+            document.getElementById('filter-completeness').value = mode;
+            document.getElementById('filter-status').value = '';
+            applyFilters();
+        }
+
+        function quickFilterStatus(statusVal) {
+            switchTab('catalog');
+            document.getElementById('filter-completeness').value = 'filled';
+            document.getElementById('filter-status').value = statusVal;
+            applyFilters();
+        }
+
+        /**
+         * Populate Year, Subject & Processor Filter Dropdowns from Filled Items
+         */
+        function populateFilterDropdowns() {
+            const yearSelect = document.getElementById('filter-year');
+            const procSelect = document.getElementById('filter-processor');
+            const subjSelect = document.getElementById('filter-subject');
+
+            const currentYear = yearSelect.value;
+            const currentProc = procSelect.value;
+            const currentSubj = subjSelect.value;
+
+            const years = [...new Set(catalog.filter(i => !i.isSlotKosong && i.tahun).map(i => i.tahun))]
+                .sort((a, b) => b.localeCompare(a));
+            const processors = [...new Set(catalog.filter(i => !i.isSlotKosong && i.pemproses).map(i => i.pemproses))]
+                .sort((a, b) => a.localeCompare(b));
+            const subjects = [...new Set(catalog.filter(i => !i.isSlotKosong && i.subyek).map(i => i.subyek))]
+                .sort((a, b) => a.localeCompare(b));
+
+            yearSelect.innerHTML = '<option value="">Tahun</option>' +
+                years.map(y => `<option value="${escapeHtml(y)}">${escapeHtml(y)}</option>`).join('');
+            yearSelect.value = years.includes(currentYear) ? currentYear : '';
+
+            procSelect.innerHTML = '<option value="">Semua Pemproses</option>' +
+                processors.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+            procSelect.value = processors.includes(currentProc) ? currentProc : '';
+
+            subjSelect.innerHTML = '<option value="">Semua Subyek</option>' +
+                subjects.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            subjSelect.value = subjects.includes(currentSubj) ? currentSubj : '';
+        }
+
+        /**
+         * Search & Filter Logic
+         */
+        function applyFilters() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const completenessFilter = document.getElementById('filter-completeness').value;
+            const statusFilter = document.getElementById('filter-status').value;
+            const yearFilter = document.getElementById('filter-year').value;
+            const procFilter = document.getElementById('filter-processor').value;
+            const subjFilter = document.getElementById('filter-subject').value;
+
+            filteredCatalog = catalog.filter(item => {
+                // 1. Completeness filter
+                if (completenessFilter === 'filled' && item.isSlotKosong) return false;
+                if (completenessFilter === 'empty' && !item.isSlotKosong) return false;
+
+                // 2. Search match
+                const matchQuery = !query ||
+                    String(item.no) === query ||
+                    String(item.no).includes(query) ||
+                    item.kode.toLowerCase().includes(query) ||
+                    item.judul.toLowerCase().includes(query) ||
+                    item.penerbit.toLowerCase().includes(query) ||
+                    item.subyek.toLowerCase().includes(query) ||
+                    item.pemproses.toLowerCase().includes(query) ||
+                    (item.isSlotKosong && 'slot kosong'.includes(query));
+
+                if (!matchQuery) return false;
+
+                // 3. Status match
+                if (statusFilter) {
+                    if (statusFilter === 'Slot Kosong') {
+                        if (!item.isSlotKosong) return false;
+                    } else if (statusFilter === 'Tersedia') {
+                        if (item.isSlotKosong || (item.status && item.status.toLowerCase() !== 'tersedia')) return false;
+                    } else {
+                        if (item.isSlotKosong || item.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+                    }
+                }
+
+                // 4. Year, Processor & Subject match
+                if (yearFilter && item.tahun !== yearFilter) return false;
+                if (procFilter && item.pemproses !== procFilter) return false;
+                if (subjFilter && item.subyek !== subjFilter) return false;
+
+                return true;
+            });
+
+            document.getElementById('filtered-count').textContent = filteredCatalog.length.toLocaleString('id-ID');
+            document.getElementById('total-count-label').textContent = catalog.length.toLocaleString('id-ID');
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('filter-completeness').value = 'all';
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-year').value = '';
+            document.getElementById('filter-processor').value = '';
+            document.getElementById('filter-subject').value = '';
+            applyFilters();
+        }
+
+        function changePageSize() {
+            const val = document.getElementById('page-size').value;
+            pageSize = (val === 'all' || val === 'Infinity') ? Infinity : (parseInt(val, 10) || 30);
+            currentPage = 1;
+            renderTable();
+        }
+
+        function resetFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('filter-completeness').value = 'all';
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-year').value = '';
+            document.getElementById('filter-processor').value = '';
+            applyFilters();
+        }
+
+        function changePageSize() {
+            const val = document.getElementById('page-size').value;
+            pageSize = (val === 'all' || val === 'Infinity') ? Infinity : (parseInt(val, 10) || 25);
+            currentPage = 1;
+            renderTable();
+        }
+
+        /**
+         * Render Catalog Table (Distinct Styling for Slot Kosong vs Filled Items)
+         */
+        function renderTable() {
+            const tbody = document.getElementById('catalog-table-body');
+            const tableWrapper = document.getElementById('catalog-table-wrapper');
+            const totalItems = filteredCatalog.length;
+
+            if (totalItems === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-12 text-center text-slate-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <i data-lucide="search-x" class="w-10 h-10 text-slate-300 mb-2"></i>
+                                <p class="font-medium text-slate-700">Tidak ada nomor urut atau koleksi yang sesuai</p>
+                                <p class="text-xs text-slate-400 mt-1">Coba ubah kata kunci pencarian atau reset filter di atas.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('pagination-info').textContent = '0 data';
+                document.getElementById('pagination-buttons').innerHTML = '';
+                lucide.createIcons();
+                return;
+            }
+
+            const isShowAll = (pageSize === Infinity || pageSize === 'all' || Number.isNaN(pageSize));
+            let startIdx = 0;
+            let endIdx = totalItems;
+            let totalPages = 1;
+
+            if (!isShowAll) {
+                totalPages = Math.ceil(totalItems / pageSize);
+                if (currentPage > totalPages) currentPage = totalPages;
+                startIdx = (currentPage - 1) * pageSize;
+                endIdx = Math.min(startIdx + pageSize, totalItems);
+                tableWrapper.classList.remove('max-h-[75vh]', 'overflow-y-auto');
+            } else {
+                currentPage = 1;
+                tableWrapper.classList.add('max-h-[75vh]', 'overflow-y-auto');
+            }
+
+            const pageItems = filteredCatalog.slice(startIdx, endIdx);
+
+            tbody.innerHTML = pageItems.map(item => {
+                // RENDER EMPTY SLOT ROW
+                if (item.isSlotKosong) {
+                    return `
+                        <tr class="bg-slate-50/80 hover:bg-amber-50/40 transition-colors">
+                            <td class="px-3 py-3 text-center font-mono font-bold text-slate-500">${item.no}</td>
+                            <td class="px-3 py-3 text-xs text-slate-400 italic font-mono">NP.100.${item.no}.____</td>
+                            <td class="px-3 py-3" colspan="4">
+                                <div class="flex items-center gap-2 text-slate-400">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-slate-300 bg-white text-slate-500 text-xs font-medium">
+                                        <i data-lucide="square-dashed-bottom" class="w-3.5 h-3.5 text-slate-400"></i>
+                                        <span>Slot Kosong — Belum Diinput</span>
+                                    </span>
+                                    <span class="text-xs text-slate-400 hidden sm:inline">Nomor urut #${item.no} tersedia untuk pencatatan dokumen baru</span>
+                                </div>
+                            </td>
+                            <td class="px-3 py-3 text-center whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-dashed border-slate-300 bg-slate-100 text-slate-500">
+                                    Slot Kosong
+                                </span>
+                            </td>
+                            <td class="px-3 py-3 text-center whitespace-nowrap">
+                                <button onclick="openFillSlotModal('${item.id}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    <span>Isi Data Slot</span>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // RENDER FILLED COLLECTION ROW
+                const statusBadge = getStatusBadge(item.status);
+                const isBorrowed = item.status.toLowerCase() === 'dipinjam';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-3 py-3 text-center font-mono font-semibold text-slate-600">${item.no}</td>
+                        <td class="px-3 py-3 whitespace-nowrap">
+                            <div class="font-mono text-xs font-bold text-blue-700">${escapeHtml(item.kode || '-')}</div>
+                            ${item.tahun ? `<div class="text-[11px] text-slate-500 mt-0.5">Tahun: <span class="font-medium text-slate-700">${escapeHtml(item.tahun)}</span></div>` : ''}
+                        </td>
+                        <td class="px-3 py-3">
+                            <div class="font-medium text-slate-800 line-clamp-2 leading-snug" title="${escapeHtml(item.judul)}">${escapeHtml(item.judul)}</div>
+                            ${item.penerbit ? `<div class="text-xs text-slate-500 mt-0.5 line-clamp-1" title="${escapeHtml(item.penerbit)}">${escapeHtml(item.penerbit)}</div>` : ''}
+                        </td>
+                        <td class="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">
+                            <div>${escapeHtml(item.fisik || '-')}</div>
+                            <div class="text-[11px] uppercase text-slate-400">${escapeHtml(item.bahasa || 'ind')}</div>
+                        </td>
+                        <td class="px-3 py-3">
+                            ${item.subyek ? `<span class="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs font-medium">${escapeHtml(item.subyek)}</span>` : '<span class="text-slate-400 text-xs">-</span>'}
+                        </td>
+                        <td class="px-3 py-3 text-xs">
+                            <div class="font-medium text-slate-700">${escapeHtml(item.pemproses || '-')}</div>
+                            ${item.tglProses ? `<div class="text-[11px] text-slate-400">${escapeHtml(item.tglProses)}</div>` : ''}
+                        </td>
+                        <td class="px-3 py-3 text-center whitespace-nowrap">${statusBadge}</td>
+                        <td class="px-3 py-3 text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="openDetailModal('${item.id}')" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer" title="Lihat Detail">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="openEditModal('${item.id}')" class="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer" title="Edit Data">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </button>
+                                ${isBorrowed ? `
+                                    <button onclick="quickReturnByBookId('${item.id}')" class="px-2 py-1 text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg transition cursor-pointer" title="Kembalikan Buku">
+                                        Kembali
+                                    </button>
+                                ` : `
+                                    <button onclick="quickBorrow('${item.id}')" class="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer" title="Pinjamkan Buku">
+                                        Pinjam
+                                    </button>
+                                `}
+                                <button onclick="confirmClearOrDelete('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer" title="Kosongkan Slot / Hapus">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            document.getElementById('pagination-info').textContent = isShowAll
+                ? `Menampilkan 1–${totalItems} dari ${totalItems} data (Semua ditampilkan)`
+                : `Menampilkan ${startIdx + 1}–${endIdx} dari ${totalItems} data (Halaman ${currentPage} dari ${totalPages})`;
+
+            renderPaginationButtons(isShowAll ? 1 : totalPages);
+            lucide.createIcons();
+        }
+
+        function renderPaginationButtons(totalPages) {
+            const container = document.getElementById('pagination-buttons');
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = `
+                <button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer">Prev</button>
+            `;
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage + 1 < maxVisible) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const activeClass = p === currentPage
+                    ? 'bg-blue-600 text-white border-blue-600 font-semibold'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100';
+                html += `<button onclick="goToPage(${p})" class="px-2.5 py-1 rounded border ${activeClass} cursor-pointer">${p}</button>`;
+            }
+
+            html += `
+                <button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 cursor-pointer">Next</button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        function getStatusBadge(status) {
+            const normalized = (status || '').toLowerCase();
+            if (normalized === 'akan diserahkan') {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">Akan diserahkan</span>`;
+            } else if (normalized === 'dipinjam') {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">Sedang Dipinjam</span>`;
+            } else {
+                return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">Tersedia</span>`;
+            }
+        }
+
+        /**
+         * 2. SMART EXCEL IMPORT (Preserves ALL 455 Sequence Numbers Including Empty Slots)
+         */
+        function handleExcelImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                    const slotMap = new Map();
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!Array.isArray(row) || row.length === 0) continue;
+
+                        const cells = row.map(c => {
+                            if (c instanceof Date) {
+                                return c.toISOString().split('T')[0];
+                            }
+                            return String(c ?? '').trim();
+                        });
+
+                        const col0 = cells[0];
+                        const col1 = cells[1] || '';
+                        const col2 = cells[2] || '';
+
+                        // Skip block headers, title lines, or repeated column headers
+                        if (!col0) continue;
+                        if (col0.toLowerCase().startsWith('blok ') || col0.toLowerCase().includes('katalog buku')) continue;
+                        if (col0.toLowerCase() === 'no' && (col1.toLowerCase().includes('kode') || col2.toLowerCase().includes('judul'))) continue;
+
+                        // Must have a valid numeric sequence number in column 0
+                        const numericNo = parseInt(col0, 10);
+                        if (isNaN(numericNo) || numericNo <= 0 || String(numericNo) !== col0.replace(/\.0+$/, '')) {
+                            continue;
+                        }
+
+                        // Keep row even if Kode & Judul are empty (marks isSlotKosong: true)
+                        const item = mapRowToItem(cells, numericNo);
+                        slotMap.set(numericNo, item);
+                    }
+
+                    if (slotMap.size === 0) {
+                        showToast('Tidak ditemukan nomor urut valid dalam file Excel.', 'error');
+                        return;
+                    }
+
+                    // Ensure continuous sequence from No. 1 up to at least 455 (or max number found)
+                    const maxNoFound = Math.max(455, ...slotMap.keys());
+                    const completeCatalog = [];
+
+                    for (let n = 1; n <= maxNoFound; n++) {
+                        if (slotMap.has(n)) {
+                            completeCatalog.push(slotMap.get(n));
+                        } else {
+                            completeCatalog.push(createEmptySlot(n));
+                        }
+                    }
+
+                    catalog = completeCatalog;
+                    saveCatalogToStorage();
+                    document.getElementById('sample-data-banner').classList.add('hidden');
+                    refreshAllUI();
+
+                    const filledTotal = catalog.filter(i => !i.isSlotKosong).length;
+                    const emptyTotal = catalog.filter(i => i.isSlotKosong).length;
+                    showToast(`Berhasil memuat ${catalog.length} nomor urut (${filledTotal} koleksi terisi, ${emptyTotal} slot kosong)!`, 'success');
+                } catch (err) {
+                    console.error(err);
+                    showToast('Gagal membaca file Excel. Pastikan format file benar (.xlsx / .xls).', 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        /**
+         * 3. EXPORT TO EXCEL (.xlsx) - 2 Sheets: "Katalog 1-455" & "Riwayat Peminjaman"
+         */
+        function exportToExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+
+                // Sheet 1: Katalog 1-455 (Preserves all 455 rows in order)
+                const catalogHeaders = [
+                    'No', 'Kode', 'Judul', 'Tahun', 'Tanggal Terbit',
+                    'Penerbit / Pembuat', 'Deskripsi Fisik', 'Bahasa',
+                    'Subyek', 'Pemproses', 'Tanggal Proses', 'Status'
+                ];
+                const sortedCatalog = [...catalog].sort((a, b) => a.no - b.no);
+                const catalogData = sortedCatalog.map(item => [
+                    item.no,
+                    item.isSlotKosong ? '' : item.kode,
+                    item.isSlotKosong ? '' : item.judul,
+                    item.isSlotKosong ? '' : item.tahun,
+                    item.isSlotKosong ? '' : item.tglTerbit,
+                    item.isSlotKosong ? '' : item.penerbit,
+                    item.isSlotKosong ? '' : item.fisik,
+                    item.isSlotKosong ? '' : item.bahasa,
+                    item.isSlotKosong ? '' : item.subyek,
+                    item.isSlotKosong ? '' : item.pemproses,
+                    item.isSlotKosong ? '' : item.tglProses,
+                    item.isSlotKosong ? '' : item.status
+                ]);
+
+                const wsCatalog = XLSX.utils.aoa_to_sheet([catalogHeaders, ...catalogData]);
+                wsCatalog['!cols'] = [
+                    { wch: 6 }, { wch: 18 }, { wch: 52 }, { wch: 8 }, { wch: 14 },
+                    { wch: 32 }, { wch: 14 }, { wch: 8 }, { wch: 24 }, { wch: 20 },
+                    { wch: 14 }, { wch: 18 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsCatalog, 'Katalog 1-455');
+
+                // Sheet 2: Riwayat Peminjaman
+                const loanHeaders = [
+                    'ID Transaksi', 'No. Urut', 'Kode Koleksi', 'Judul Koleksi', 'Nama Peminjam',
+                    'Bidang / Unit Kerja', 'Tanggal Pinjam', 'Tanggal Jatuh Tempo',
+                    'Tanggal Dikembalikan', 'Status Peminjaman', 'Keterangan'
+                ];
+                const loanData = loans.map(l => [
+                    l.id,
+                    l.bookNo || '-',
+                    l.bookKode,
+                    l.bookJudul,
+                    l.borrower,
+                    l.unit,
+                    l.loanDate,
+                    l.dueDate,
+                    l.returnDate || '-',
+                    l.status === 'active' ? 'Sedang Dipinjam' : 'Sudah Dikembalikan',
+                    l.notes || ''
+                ]);
+
+                const wsLoans = XLSX.utils.aoa_to_sheet([loanHeaders, ...loanData]);
+                wsLoans['!cols'] = [
+                    { wch: 16 }, { wch: 10 }, { wch: 18 }, { wch: 45 }, { wch: 22 },
+                    { wch: 22 }, { wch: 14 }, { wch: 18 }, { wch: 18 },
+                    { wch: 18 }, { wch: 30 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsLoans, 'Riwayat Peminjaman');
+
+                const dateStamp = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Katalog_Perpustakaan_1-455_${dateStamp}.xlsx`);
+                showToast('File Excel (.xlsx) dengan 2 sheet berhasil diunduh!', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('Terjadi kesalahan saat mengekspor data ke Excel.', 'error');
+            }
+        }
+
+        /**
+         * 4. FILL EMPTY SLOT, ADD, EDIT, CLEAR SLOT, & DELETE
+         */
+        function openFillSlotModal(id) {
+            const item = catalog.find(i => i.id === id);
+            if (!item) return;
+
+            isFillingEmptySlot = true;
+            const currentYear = new Date().getFullYear();
+            autoSuggestedCode = `NP.100.${item.no}.${currentYear}`;
+
+            document.getElementById('form-modal-title').textContent = `Isi Data Slot Kosong — No. #${item.no}`;
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('collection-form').reset();
+
+            document.getElementById('field-no').value = item.no;
+            document.getElementById('field-tahun').value = currentYear;
+            document.getElementById('field-kode').value = autoSuggestedCode;
+            document.getElementById('field-bahasa').value = 'ind';
+            document.getElementById('field-tgl-proses').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('form-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('field-judul').focus(), 50);
+        }
+
+        function openAddOrNextSlotModal() {
+            // Find first available empty slot if exists, otherwise suggest next number after max
+            const firstEmpty = catalog.find(i => i.isSlotKosong);
+            if (firstEmpty) {
+                openFillSlotModal(firstEmpty.id);
+                return;
+            }
+
+            isFillingEmptySlot = true;
+            const nextNo = catalog.length > 0 ? Math.max(...catalog.map(i => i.no || 0)) + 1 : 1;
+            const currentYear = new Date().getFullYear();
+            autoSuggestedCode = `NP.100.${nextNo}.${currentYear}`;
+
+            document.getElementById('form-modal-title').textContent = `Tambah Nomor Baru — No. #${nextNo}`;
+            document.getElementById('edit-item-id').value = '';
+            document.getElementById('collection-form').reset();
+
+            document.getElementById('field-no').value = nextNo;
+            document.getElementById('field-tahun').value = currentYear;
+            document.getElementById('field-kode').value = autoSuggestedCode;
+            document.getElementById('field-bahasa').value = 'ind';
+            document.getElementById('field-tgl-proses').value = new Date().toISOString().split('T')[0];
+
+            document.getElementById('form-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('field-judul').focus(), 50);
+        }
+
+        function suggestCodeOnNoOrYearChange() {
+            if (!isFillingEmptySlot) return;
+            const kodeInput = document.getElementById('field-kode');
+            // Only auto-update if user hasn't manually customized the code away from the auto-suggestion
+            if (kodeInput.value === autoSuggestedCode || kodeInput.value === '') {
+                const noVal = document.getElementById('field-no').value || 'X';
+                const yearVal = document.getElementById('field-tahun').value || new Date().getFullYear();
+                autoSuggestedCode = `NP.100.${noVal}.${yearVal}`;
+                kodeInput.value = autoSuggestedCode;
+            }
+        }
+
+        function applyAutoFormatCode() {
+            const noVal = document.getElementById('field-no').value || 'X';
+            const yearVal = document.getElementById('field-tahun').value || new Date().getFullYear();
+            autoSuggestedCode = `NP.100.${noVal}.${yearVal}`;
+            document.getElementById('field-kode').value = autoSuggestedCode;
+        }
+
+        function openEditModal(id) {
+            const item = catalog.find(i => i.id === id);
+            if (!item) return;
+
+            isFillingEmptySlot = false;
+            document.getElementById('form-modal-title').textContent = `Edit Koleksi — No. #${item.no}`;
+            document.getElementById('edit-item-id').value = item.id;
+            document.getElementById('field-no').value = item.no;
+            document.getElementById('field-kode').value = item.kode;
+            document.getElementById('field-judul').value = item.judul;
+            document.getElementById('field-tahun').value = item.tahun;
+            document.getElementById('field-tgl-terbit').value = item.tglTerbit;
+            document.getElementById('field-penerbit').value = item.penerbit;
+            document.getElementById('field-fisik').value = item.fisik;
+            document.getElementById('field-bahasa').value = item.bahasa || 'ind';
+            document.getElementById('field-subyek').value = item.subyek;
+            document.getElementById('field-status').value = item.status;
+            document.getElementById('field-pemproses').value = item.pemproses;
+            document.getElementById('field-tgl-proses').value = item.tglProses;
+
+            document.getElementById('form-modal').classList.remove('hidden');
+        }
+
+        function closeFormModal() {
+            document.getElementById('form-modal').classList.add('hidden');
+        }
+
+        function handleCollectionSave(event) {
+            event.preventDefault();
+            const editId = document.getElementById('edit-item-id').value;
+            const noVal = parseInt(document.getElementById('field-no').value, 10) || 1;
+            const kodeVal = document.getElementById('field-kode').value.trim();
+            const judulVal = document.getElementById('field-judul').value.trim();
+
+            const itemData = {
+                no: noVal,
+                kode: kodeVal,
+                judul: judulVal,
+                tahun: document.getElementById('field-tahun').value.trim(),
+                tglTerbit: document.getElementById('field-tgl-terbit').value.trim(),
+                penerbit: document.getElementById('field-penerbit').value.trim(),
+                fisik: document.getElementById('field-fisik').value.trim(),
+                bahasa: document.getElementById('field-bahasa').value.trim() || 'ind',
+                subyek: document.getElementById('field-subyek').value.trim(),
+                status: document.getElementById('field-status').value,
+                pemproses: document.getElementById('field-pemproses').value.trim(),
+                tglProses: document.getElementById('field-tgl-proses').value,
+                isSlotKosong: (kodeVal === '' && judulVal === '')
+            };
+
+            if (editId) {
+                const idx = catalog.findIndex(i => i.id === editId);
+                if (idx !== -1) {
+                    catalog[idx] = { ...catalog[idx], ...itemData };
+                    showToast(`Data pada nomor urut #${noVal} berhasil disimpan!`, 'success');
+                }
+            } else {
+                // Check if sequence number already exists as an empty slot
+                const existingIdx = catalog.findIndex(i => i.no === noVal);
+                if (existingIdx !== -1) {
+                    catalog[existingIdx] = { ...catalog[existingIdx], ...itemData };
+                } else {
+                    catalog.push({
+                        id: 'slot_' + noVal + '_' + Math.random().toString(36).substr(2, 6),
+                        ...itemData
+                    });
+                }
+                showToast(`Koleksi baru pada nomor urut #${noVal} berhasil ditambahkan!`, 'success');
+            }
+
+            saveCatalogToStorage();
+            closeFormModal();
+            refreshAllUI();
+        }
+
+        function openDetailModal(id) {
+            const item = catalog.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('detail-kode-badge').textContent = item.kode || `No. #${item.no}`;
+            const body = document.getElementById('detail-modal-body');
+
+            body.innerHTML = `
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Judul Dokumen / Buku</p>
+                    <p class="text-base font-bold text-slate-900 mt-1 leading-snug">${escapeHtml(item.judul)}</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-400">Nomor Urut</p>
+                        <p class="font-mono font-bold text-slate-800">#${item.no}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Status Koleksi</p>
+                        <div class="mt-0.5">${getStatusBadge(item.status)}</div>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Tahun Terbit</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.tahun || '-')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Tanggal Terbit</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.tglTerbit || '-')}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-xs text-slate-400">Penerbit / Pembuat</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.penerbit || '-')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Deskripsi Fisik</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.fisik || '-')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Bahasa</p>
+                        <p class="font-medium text-slate-800 uppercase">${escapeHtml(item.bahasa || 'ind')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Subyek / Kategori</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.subyek || '-')}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Pemproses & Tgl Proses</p>
+                        <p class="font-medium text-slate-800">${escapeHtml(item.pemproses || '-')} ${item.tglProses ? `(${escapeHtml(item.tglProses)})` : ''}</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+
+        /**
+         * Confirm Clearing Slot (reverting to Slot Kosong) or Deleting Row Permanently
+         */
+        function confirmClearOrDelete(id) {
+            const item = catalog.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('confirm-modal-title').textContent = `Kosongkan atau Hapus No. #${item.no}`;
+            document.getElementById('confirm-modal-message').textContent =
+                `Pilih "Kosongkan Slot Saja" untuk mempertahankan nomor urut #${item.no} sebagai Slot Kosong, atau "Hapus Permanen" untuk menghapus baris ini dari daftar.`;
+
+            const clearBtn = document.getElementById('confirm-modal-secondary-btn');
+            clearBtn.classList.remove('hidden');
+            clearBtn.onclick = function() {
+                const idx = catalog.findIndex(i => i.id === id);
+                if (idx !== -1) {
+                    catalog[idx] = createEmptySlot(item.no);
+                    saveCatalogToStorage();
+                    closeConfirmModal();
+                    refreshAllUI();
+                    showToast(`Nomor urut #${item.no} dikembalikan menjadi Slot Kosong.`, 'info');
+                }
+            };
+
+            const deleteBtn = document.getElementById('confirm-modal-action-btn');
+            deleteBtn.textContent = 'Hapus Permanen';
+            deleteBtn.onclick = function() {
+                catalog = catalog.filter(i => i.id !== id);
+                saveCatalogToStorage();
+                closeConfirmModal();
+                refreshAllUI();
+                showToast(`Baris nomor #${item.no} dihapus permanen.`, 'info');
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function openResetModal() {
+            document.getElementById('confirm-modal-title').textContent = 'Reset ke Data Asli (No. 1 – 455)';
+            document.getElementById('confirm-modal-message').textContent =
+                'Semua perubahan, pengisian slot, dan riwayat peminjaman akan dihapus dan dikembalikan ke dataset asli lengkap (455 nomor urut: 356 koleksi terisi & 99 slot kosong). Lanjutkan?';
+
+            const clearBtn = document.getElementById('confirm-modal-secondary-btn');
+            clearBtn.classList.add('hidden');
+
+            const actionBtn = document.getElementById('confirm-modal-action-btn');
+            actionBtn.textContent = 'Ya, Reset ke Data Asli (455)';
+            actionBtn.onclick = function() {
+                catalog = buildFullDatasetFromSeed();
+                loans = [];
+                localStorage.removeItem(STORAGE_KEY_BANNER);
+                saveCatalogToStorage();
+                saveLoansToStorage();
+                document.getElementById('sample-data-banner').classList.remove('hidden');
+                closeConfirmModal();
+                refreshAllUI();
+                showToast('Aplikasi berhasil dikembalikan ke dataset asli lengkap (455 nomor urut).', 'info');
+            };
+
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-modal-secondary-btn').classList.add('hidden');
+            document.getElementById('confirm-modal-action-btn').textContent = 'Ya, Lanjutkan';
+        }
+
+        function dismissBanner() {
+            document.getElementById('sample-data-banner').classList.add('hidden');
+            localStorage.setItem(STORAGE_KEY_BANNER, 'true');
+        }
+
+        /**
+         * 5. CIRCULATION & LOAN MANAGEMENT (Only Filled & Non-Borrowed Books)
+         */
+        function populateLoanBookSelect() {
+            const select = document.getElementById('loan-book-select');
+            const filterText = (document.getElementById('loan-book-search')?.value || '').toLowerCase().trim();
+
+            const availableBooks = catalog.filter(i =>
+                !i.isSlotKosong &&
+                i.status.toLowerCase() !== 'dipinjam' &&
+                (!filterText ||
+                    String(i.no).includes(filterText) ||
+                    i.kode.toLowerCase().includes(filterText) ||
+                    i.judul.toLowerCase().includes(filterText))
+            );
+
+            select.innerHTML = `<option value="">-- Pilih Koleksi Tersedia (${availableBooks.length}) --</option>` +
+                availableBooks.map(b =>
+                    `<option value="${b.id}">#${b.no} [${escapeHtml(b.kode)}] ${escapeHtml(b.judul.substring(0, 70))}${b.judul.length > 70 ? '...' : ''}</option>`
+                ).join('');
+        }
+
+        function quickBorrow(bookId) {
+            switchTab('circulation');
+            document.getElementById('loan-book-search').value = '';
+            populateLoanBookSelect();
+            document.getElementById('loan-book-select').value = bookId;
+            document.getElementById('loan-borrower').focus();
+        }
+
+        function handleLoanSubmit(event) {
+            event.preventDefault();
+            const bookId = document.getElementById('loan-book-select').value;
+            const borrower = document.getElementById('loan-borrower').value.trim();
+            const unit = document.getElementById('loan-unit').value.trim();
+            const loanDate = document.getElementById('loan-date').value;
+            const dueDate = document.getElementById('loan-due-date').value;
+            const notes = document.getElementById('loan-notes').value.trim();
+
+            const bookIdx = catalog.findIndex(i => i.id === bookId);
+            if (bookIdx === -1 || catalog[bookIdx].isSlotKosong) {
+                showToast('Koleksi tidak valid atau sedang dipinjam.', 'error');
+                return;
+            }
+
+            const book = catalog[bookIdx];
+            const prevStatus = book.status;
+
+            catalog[bookIdx].status = 'Dipinjam';
+
+            const newLoan = {
+                id: 'LN-' + Date.now().toString().slice(-6),
+                bookId: book.id,
+                bookNo: book.no,
+                bookKode: book.kode,
+                bookJudul: book.judul,
+                prevStatus: prevStatus,
+                borrower: borrower,
+                unit: unit,
+                loanDate: loanDate,
+                dueDate: dueDate,
+                returnDate: '',
+                status: 'active',
+                notes: notes
+            };
+
+            loans.unshift(newLoan);
+            saveCatalogToStorage();
+            saveLoansToStorage();
+
+            document.getElementById('loan-book-search').value = '';
+            document.getElementById('loan-borrower').value = '';
+            document.getElementById('loan-unit').value = '';
+            document.getElementById('loan-notes').value = '';
+
+            refreshAllUI();
+            showToast(`Peminjaman #${book.no} (${book.kode}) atas nama ${borrower} berhasil dicatat!`, 'success');
+        }
+
+        function returnLoan(loanId) {
+            const loanIdx = loans.findIndex(l => l.id === loanId);
+            if (loanIdx === -1) return;
+
+            const loan = loans[loanIdx];
+            loan.status = 'returned';
+            loan.returnDate = new Date().toISOString().split('T')[0];
+
+            const bookIdx = catalog.findIndex(b => b.id === loan.bookId);
+            if (bookIdx !== -1) {
+                catalog[bookIdx].status = loan.prevStatus || '';
+            }
+
+            saveCatalogToStorage();
+            saveLoansToStorage();
+            refreshAllUI();
+            showToast(`Koleksi "${loan.bookKode}" telah dikembalikan!`, 'success');
+        }
+
+        function quickReturnByBookId(bookId) {
+            const activeLoan = loans.find(l => l.bookId === bookId && l.status === 'active');
+            if (activeLoan) {
+                returnLoan(activeLoan.id);
+            } else {
+                const bookIdx = catalog.findIndex(b => b.id === bookId);
+                if (bookIdx !== -1) {
+                    catalog[bookIdx].status = '';
+                    saveCatalogToStorage();
+                    refreshAllUI();
+                    showToast('Status koleksi dikembalikan menjadi Tersedia.', 'success');
+                }
+            }
+        }
+
+        function renderLoans() {
+            const container = document.getElementById('loans-list-container');
+            const filter = document.getElementById('loan-filter-status').value;
+
+            const filteredLoans = loans.filter(l => {
+                if (filter === 'active') return l.status === 'active';
+                if (filter === 'returned') return l.status === 'returned';
+                return true;
+            });
+
+            if (filteredLoans.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-400">
+                        <p class="font-medium text-slate-600 text-sm">Belum ada catatan sirkulasi peminjaman</p>
+                        <p class="text-xs mt-1">Gunakan formulir di samping untuk mencatat peminjaman buku atau arsip.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredLoans.map(l => {
+                const isActive = l.status === 'active';
+                return `
+                    <div class="p-4 rounded-xl border ${isActive ? 'border-amber-200 bg-amber-50/40' : 'border-slate-200 bg-slate-50/60'} flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${l.bookNo ? `<span class="font-mono text-xs font-bold text-slate-600">#${l.bookNo}</span>` : ''}
+                                <span class="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">${escapeHtml(l.bookKode)}</span>
+                                ${isActive
+                                    ? `<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">Sedang Dipinjam</span>`
+                                    : `<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">Dikembalikan (${l.returnDate})</span>`
+                                }
+                            </div>
+                            <h4 class="font-semibold text-slate-800 text-sm leading-snug">${escapeHtml(l.bookJudul)}</h4>
+                            <div class="text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1 pt-1">
+                                <span><strong>Peminjam:</strong> ${escapeHtml(l.borrower)} (${escapeHtml(l.unit)})</span>
+                                <span><strong>Pinjam:</strong> ${l.loanDate}</span>
+                                <span><strong>Jatuh Tempo:</strong> ${l.dueDate}</span>
+                            </div>
+                            ${l.notes ? `<p class="text-xs text-slate-500 italic">Keterangan: ${escapeHtml(l.notes)}</p>` : ''}
+                        </div>
+
+                        ${isActive ? `
+                            <button onclick="returnLoan('${l.id}')" class="shrink-0 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition cursor-pointer">
+                                <i data-lucide="check" class="w-4 h-4"></i>
+                                <span>Kembalikan</span>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        /**
+         * 6. STATISTICS & CHARTS
+         */
+        function renderStats() {
+            const filledItems = catalog.filter(i => !i.isSlotKosong);
+            const emptyCount = catalog.filter(i => i.isSlotKosong).length;
+            const totalAll = catalog.length || 1;
+
+            // 1. Top 10 Years (from filled items)
+            const yearCounts = {};
+            filledItems.forEach(item => {
+                const y = item.tahun || 'Tidak Diketahui';
+                yearCounts[y] = (yearCounts[y] || 0) + 1;
+            });
+
+            const sortedYears = Object.entries(yearCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+
+            const maxYearCount = sortedYears.length > 0 ? sortedYears[0][1] : 1;
+            document.getElementById('chart-years').innerHTML = sortedYears.map(([year, count]) => {
+                const pct = Math.round((count / maxYearCount) * 100);
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-medium mb-1">
+                            <span class="text-slate-700 font-semibold">${escapeHtml(year)}</span>
+                            <span class="text-slate-500">${count} koleksi</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="text-xs text-slate-400">Belum ada data terisi.</p>';
+
+            // 2. Completeness Chart (Terisi vs Slot Kosong)
+            const filledPct = Math.round((filledItems.length / totalAll) * 100);
+            const emptyPct = Math.round((emptyCount / totalAll) * 100);
+            document.getElementById('chart-completeness').innerHTML = `
+                <div>
+                    <div class="flex justify-between text-xs font-medium mb-1">
+                        <span class="text-slate-700 font-semibold">Koleksi Terisi</span>
+                        <span class="text-slate-500">${filledItems.length} nomor (${filledPct}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${filledPct}%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between text-xs font-medium mb-1">
+                        <span class="text-slate-700 font-semibold">Slot Kosong (Belum Diinput)</span>
+                        <span class="text-slate-500">${emptyCount} nomor (${emptyPct}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-slate-400 h-2.5 rounded-full" style="width: ${emptyPct}%"></div>
+                    </div>
+                </div>
+            `;
+
+            // 3. Status Distribution (among filled items)
+            const statusCounts = {
+                'Akan diserahkan': 0,
+                'Tersedia / Di Rak': 0,
+                'Sedang Dipinjam': 0
+            };
+            filledItems.forEach(item => {
+                const st = item.status.toLowerCase();
+                if (st === 'akan diserahkan') statusCounts['Akan diserahkan']++;
+                else if (st === 'dipinjam') statusCounts['Sedang Dipinjam']++;
+                else statusCounts['Tersedia / Di Rak']++;
+            });
+
+            const filledTotal = filledItems.length || 1;
+            const statusColors = {
+                'Akan diserahkan': 'bg-emerald-500',
+                'Tersedia / Di Rak': 'bg-indigo-500',
+                'Sedang Dipinjam': 'bg-amber-500'
+            };
+
+            document.getElementById('chart-status').innerHTML = Object.entries(statusCounts).map(([label, count]) => {
+                const pct = Math.round((count / filledTotal) * 100);
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-medium mb-1">
+                            <span class="text-slate-700 font-semibold">${label}</span>
+                            <span class="text-slate-500">${count} (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                            <div class="${statusColors[label]} h-2.5 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 4. Processor Distribution
+            const procCounts = {};
+            filledItems.forEach(item => {
+                const p = item.pemproses || 'Belum Diproses';
+                procCounts[p] = (procCounts[p] || 0) + 1;
+            });
+
+            const sortedProcs = Object.entries(procCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            const maxProcCount = sortedProcs.length > 0 ? sortedProcs[0][1] : 1;
+            document.getElementById('chart-processors').innerHTML = sortedProcs.map(([proc, count]) => {
+                const pct = Math.round((count / maxProcCount) * 100);
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-medium mb-1">
+                            <span class="text-slate-700 font-semibold">${escapeHtml(proc)}</span>
+                            <span class="text-slate-500">${count} dokumen</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                            <div class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /**
+         * 7. TAB NAVIGATION & UTILITIES
+         */
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+            document.getElementById(`tab-panel-${tabName}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600', 'font-semibold');
+                btn.classList.add('border-transparent', 'text-slate-500', 'font-medium');
+            });
+
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-500', 'font-medium');
+            activeBtn.classList.add('border-blue-600', 'text-blue-600', 'font-semibold');
+
+            if (tabName === 'stats') renderStats();
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const styles = {
+                success: 'bg-emerald-900 text-white border-emerald-700',
+                error: 'bg-rose-900 text-white border-rose-700',
+                info: 'bg-slate-800 text-white border-slate-700'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs sm:text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${styles[type] || styles.info}`;
+            toast.innerHTML = `<span class="flex-1">${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
