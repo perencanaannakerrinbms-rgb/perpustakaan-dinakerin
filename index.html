@@ -671,6 +671,9 @@
         let autoSuggestedCode = '';
         let ghSyncTimeout = null;
         let isSyncingGithub = false;
+
+        /**
+         * Build Full 455 Dataset from Built-in Seed
          */
         function buildFullDatasetFromSeed() {
             const byNo = new Map();
@@ -768,6 +771,28 @@
 
             // Automatically fetch shared data.json from GitHub Pages if available
             await loadSharedGithubDataOnStartup();
+        }
+
+        /**
+         * Create an empty slot object for a given sequence number
+         */
+        function createEmptySlot(no) {
+            return {
+                id: 'slot_' + no,
+                no: no,
+                kode: '',
+                judul: '',
+                tahun: '',
+                tglTerbit: '',
+                penerbit: '',
+                fisik: '',
+                bahasa: '',
+                subyek: '',
+                pemproses: '',
+                tglProses: '',
+                status: '',
+                isSlotKosong: true
+            };
         }
 
         function saveCatalogToStorage(triggerCloudSync = true) {
@@ -1010,86 +1035,6 @@
             closeGithubModal();
         }
 
-        /**
-         * Create an empty slot object for a given sequence number
-         */
-        function createEmptySlot(no) {
-            return {
-                id: 'slot_' + no,
-                no: no,
-                kode: '',
-                judul: '',
-                tahun: '',
-                tglTerbit: '',
-                penerbit: '',
-                fisik: '',
-                bahasa: '',
-                subyek: '',
-                pemproses: '',
-                tglProses: '',
-                status: '',
-                isSlotKosong: true
-            };
-        }
-
-        /**
-         * Initialize App (Loads full 455 dataset immediately)
-         */
-        function initApp() {
-            const savedCatalog = localStorage.getItem(STORAGE_KEY_CATALOG);
-            const savedLoans = localStorage.getItem(STORAGE_KEY_LOANS);
-            const bannerDismissed = localStorage.getItem(STORAGE_KEY_BANNER);
-
-            if (savedCatalog) {
-                try {
-                    const parsed = JSON.parse(savedCatalog);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        catalog = parsed.map(item => ({
-                            ...item,
-                            isSlotKosong: (!item.kode?.trim() && !item.judul?.trim())
-                        }));
-                    } else {
-                        catalog = buildFullDatasetFromSeed();
-                        saveCatalogToStorage();
-                    }
-                } catch (e) {
-                    catalog = buildFullDatasetFromSeed();
-                    saveCatalogToStorage();
-                }
-            } else {
-                catalog = buildFullDatasetFromSeed();
-                saveCatalogToStorage();
-            }
-
-            if (savedLoans) {
-                try {
-                    loans = JSON.parse(savedLoans);
-                } catch (e) {
-                    loans = [];
-                }
-            }
-
-            if (bannerDismissed === 'true') {
-                document.getElementById('sample-data-banner').classList.add('hidden');
-            }
-
-            // Default dates for loan form
-            const today = new Date().toISOString().split('T')[0];
-            const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            document.getElementById('loan-date').value = today;
-            document.getElementById('loan-due-date').value = nextWeek;
-
-            refreshAllUI();
-        }
-
-        function saveCatalogToStorage() {
-            localStorage.setItem(STORAGE_KEY_CATALOG, JSON.stringify(catalog));
-        }
-
-        function saveLoansToStorage() {
-            localStorage.setItem(STORAGE_KEY_LOANS, JSON.stringify(loans));
-        }
-
         function refreshAllUI() {
             // Keep catalog sorted by sequence number (No)
             catalog.sort((a, b) => a.no - b.no);
@@ -1239,22 +1184,6 @@
         function changePageSize() {
             const val = document.getElementById('page-size').value;
             pageSize = (val === 'all' || val === 'Infinity') ? Infinity : (parseInt(val, 10) || 30);
-            currentPage = 1;
-            renderTable();
-        }
-
-        function resetFilters() {
-            document.getElementById('search-input').value = '';
-            document.getElementById('filter-completeness').value = 'all';
-            document.getElementById('filter-status').value = '';
-            document.getElementById('filter-year').value = '';
-            document.getElementById('filter-processor').value = '';
-            applyFilters();
-        }
-
-        function changePageSize() {
-            const val = document.getElementById('page-size').value;
-            pageSize = (val === 'all' || val === 'Infinity') ? Infinity : (parseInt(val, 10) || 25);
             currentPage = 1;
             renderTable();
         }
